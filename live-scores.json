@@ -1,0 +1,604 @@
+{
+  "fetchTime": "2026-06-23T04:50:31.809Z",
+  "fetchTimeBeijing": "2026-06-23 12:50:31 (北京时间)",
+  "total": 33,
+  "finished": 1,
+  "inPlay": 1,
+  "scheduled": 31,
+  "matches": [
+    {
+      "homeTeam": "Norway",
+      "awayTeam": "Senegal",
+      "status": "FINISHED",
+      "utcDate": "2026-06-23T00:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": 3,
+          "away": 2
+        },
+        "halfTime": {
+          "home": 1,
+          "away": 0
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Jordan",
+      "awayTeam": "Algeria",
+      "status": "IN_PLAY",
+      "utcDate": "2026-06-23T03:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": 1,
+          "away": 1
+        },
+        "halfTime": {
+          "home": 1,
+          "away": 0
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Portugal",
+      "awayTeam": "Uzbekistan",
+      "status": "TIMED",
+      "utcDate": "2026-06-23T17:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "England",
+      "awayTeam": "Ghana",
+      "status": "TIMED",
+      "utcDate": "2026-06-23T20:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Panama",
+      "awayTeam": "Croatia",
+      "status": "TIMED",
+      "utcDate": "2026-06-23T23:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Colombia",
+      "awayTeam": "Congo DR",
+      "status": "TIMED",
+      "utcDate": "2026-06-24T02:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Bosnia-H.",
+      "awayTeam": "Qatar",
+      "status": "TIMED",
+      "utcDate": "2026-06-24T19:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Switzerland",
+      "awayTeam": "Canada",
+      "status": "TIMED",
+      "utcDate": "2026-06-24T19:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Morocco",
+      "awayTeam": "Haiti",
+      "status": "TIMED",
+      "utcDate": "2026-06-24T22:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Scotland",
+      "awayTeam": "Brazil",
+      "status": "TIMED",
+      "utcDate": "2026-06-24T22:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "South Africa",
+      "awayTeam": "Korea Republic",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T01:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Czechia",
+      "awayTeam": "Mexico",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T01:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Curaçao",
+      "awayTeam": "Ivory Coast",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T20:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Ecuador",
+      "awayTeam": "Germany",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T20:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Japan",
+      "awayTeam": "Sweden",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T23:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Tunisia",
+      "awayTeam": "Netherlands",
+      "status": "TIMED",
+      "utcDate": "2026-06-25T23:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Paraguay",
+      "awayTeam": "Australia",
+      "status": "TIMED",
+      "utcDate": "2026-06-26T02:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Turkey",
+      "awayTeam": "USA",
+      "status": "TIMED",
+      "utcDate": "2026-06-26T02:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Norway",
+      "awayTeam": "France",
+      "status": "TIMED",
+      "utcDate": "2026-06-26T19:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Senegal",
+      "awayTeam": "Iraq",
+      "status": "TIMED",
+      "utcDate": "2026-06-26T19:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Cape Verde",
+      "awayTeam": "Saudi Arabia",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T00:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Uruguay",
+      "awayTeam": "Spain",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T00:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Egypt",
+      "awayTeam": "Iran",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T03:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "New Zealand",
+      "awayTeam": "Belgium",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T03:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Croatia",
+      "awayTeam": "Ghana",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T21:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Panama",
+      "awayTeam": "England",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T21:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Congo DR",
+      "awayTeam": "Uzbekistan",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T23:30:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Colombia",
+      "awayTeam": "Portugal",
+      "status": "TIMED",
+      "utcDate": "2026-06-27T23:30:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Algeria",
+      "awayTeam": "Austria",
+      "status": "TIMED",
+      "utcDate": "2026-06-28T02:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Jordan",
+      "awayTeam": "Argentina",
+      "status": "TIMED",
+      "utcDate": "2026-06-28T02:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Unknown",
+      "awayTeam": "Unknown",
+      "status": "TIMED",
+      "utcDate": "2026-06-28T19:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Unknown",
+      "awayTeam": "Unknown",
+      "status": "TIMED",
+      "utcDate": "2026-06-29T17:00:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    },
+    {
+      "homeTeam": "Unknown",
+      "awayTeam": "Unknown",
+      "status": "TIMED",
+      "utcDate": "2026-06-29T20:30:00Z",
+      "score": {
+        "fullTime": {
+          "home": null,
+          "away": null
+        },
+        "halfTime": {
+          "home": null,
+          "away": null
+        }
+      },
+      "minute": null,
+      "venue": null
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "wc2026-predictor",
+  "version": "1.0.0",
+  "description": "2026 FIFA World Cup AI Prediction Website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
