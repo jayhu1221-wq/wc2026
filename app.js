@@ -122,14 +122,22 @@ const App = {
     if (!matchTime) return '';
     const now = this._nowBJ();
     const diffMs = matchTime.getTime() - now.getTime();
-    if (diffMs <= 0) return '即将开球';
+    if (diffMs <= 0) return t('common.kickoff');
 
     const diffH = Math.floor(diffMs / 3600000);
     const diffM = Math.floor((diffMs % 3600000) / 60000);
-    if (diffH > 24) return `${Math.floor(diffH/24)}天后`;
-    if (diffH > 0) return `${diffH}小时${diffM}分后`;
-    if (diffM > 0) return `${diffM}分钟后`;
-    return '即将开球';
+    const lang = (typeof I18n !== 'undefined') ? I18n.lang : 'zh';
+    if (diffH > 24) {
+      const days = Math.floor(diffH/24);
+      return lang === 'zh' ? `${days}天后` : lang === 'es' ? `En ${days} días` : lang === 'fr' ? `Dans ${days} jours` : `In ${days} days`;
+    }
+    if (diffH > 0) {
+      return lang === 'zh' ? `${diffH}小时${diffM}分后` : lang === 'es' ? `En ${diffH}h ${diffM}m` : lang === 'fr' ? `Dans ${diffH}h ${diffM}m` : `In ${diffH}h ${diffM}m`;
+    }
+    if (diffM > 0) {
+      return lang === 'zh' ? `${diffM}分钟后` : lang === 'es' ? `En ${diffM} min` : lang === 'fr' ? `Dans ${diffM} min` : `In ${diffM} min`;
+    }
+    return t('common.kickoff');
   },
 
   async init() {
@@ -153,10 +161,41 @@ const App = {
     this._initResizeHandler();
     this._initDayChangeDetector();
     this._initDataFreshnessIndicator();
+
+    // 监听语言切换事件，切换后重新渲染所有动态内容
+    document.addEventListener('langchange', () => {
+      this.renderTodayMatches();
+      this.renderSchedule();
+      this.renderResults();
+      this.renderGroups();
+      this.renderBracket();
+      this.renderTeamsPower();
+      this.initDeepSeek();
+    });
   },
 
-  // ── Helper: Get Chinese team name ──
+  // ── Helper: Get localized group label (e.g., "A组" / "Group A" / "Grupo A" / "Groupe A") ──
+  groupLabel(group) {
+    const lang = (typeof I18n !== 'undefined') ? I18n.lang : 'zh';
+    if (lang === 'zh') return `${group}组`;
+    if (lang === 'es') return `Grupo ${group}`;
+    if (lang === 'fr') return `Groupe ${group}`;
+    return `Group ${group}`;
+  },
+
+  // ── Helper: Get localized venue/city name ──
+  venueName(venue) {
+    if (typeof I18n !== 'undefined' && I18n.cityName) {
+      return I18n.cityName(venue);
+    }
+    return venue;
+  },
+
+  // ── Helper: Get localized team name (uses i18n) ──
   zhName(en) {
+    if (typeof I18n !== 'undefined' && I18n.teamName) {
+      return I18n.teamName(en);
+    }
     return WC2026_DATA.teamZhName[en] || en;
   },
 
@@ -326,7 +365,7 @@ const App = {
 
       html += `
         <div class="today-match-card${isSelected ? ' selected' : ''}${(matchStatus === 'live' || m.liveScore) ? ' live-match' : ''}" data-idx="${i}" data-day="today" onclick="App.showDayPrediction('today',${i})">
-          <div class="today-match-group">🏆 ${m.group}组 · <span style="color:#9ca3af;font-size:10px;">📍 ${m.venue}</span></div>
+          <div class="today-match-group">🏆 ${this.groupLabel(m.group)} · <span style="color:#9ca3af;font-size:10px;">📍 ${this.venueName(m.venue)}</span></div>
           <div class="today-match-teams">
             <span class="today-team">${hE} ${hZh}</span>
             ${m.liveScore ? `<span class="today-vs-score" style="color:#ef4444;font-weight:900;">${m.liveScore.hg} - ${m.liveScore.ag}</span>` : '<span class="today-vs">VS</span>'}
@@ -349,7 +388,7 @@ const App = {
             <span class="weather-loading">⏳ 获取天气...</span>
           </div>
           <button class="today-match-predict-btn" onclick="event.stopPropagation(); App.showDayPrediction('today',${i})">
-            📊 查看完整AI分析
+            📊 ${I18n.lang === 'zh' ? '查看完整AI分析' : I18n.lang === 'es' ? 'Ver análisis IA completo' : I18n.lang === 'fr' ? 'Voir l\'analyse IA complète' : 'View Full AI Analysis'}
           </button>
         </div>
       `;
@@ -415,7 +454,7 @@ const App = {
 
       html += `
         <div class="today-match-card tomorrow-card${isSelected ? ' selected' : ''}${(matchStatus === 'live' || m.liveScore) ? ' live-match' : ''}" data-idx="${i}" data-day="tomorrow" onclick="App.showDayPrediction('tomorrow',${i})">
-          <div class="today-match-group">🏆 ${m.group}组 · <span style="color:#9ca3af;font-size:10px;">📍 ${m.venue}</span></div>
+          <div class="today-match-group">🏆 ${this.groupLabel(m.group)} · <span style="color:#9ca3af;font-size:10px;">📍 ${this.venueName(m.venue)}</span></div>
           <div class="today-match-teams">
             <span class="today-team">${hE} ${hZh}</span>
             ${m.liveScore ? `<span class="today-vs-score" style="color:#ef4444;font-weight:900;">${m.liveScore.hg} - ${m.liveScore.ag}</span>` : '<span class="today-vs">VS</span>'}
@@ -846,7 +885,7 @@ const App = {
         const dualTime = this._formatDualTime(r.time, r.venue);
         html += `
           <div class="schedule-match completed" data-type="group" data-status="completed">
-            <span class="match-group-badge">${r.group}组</span>
+            <span class="match-group-badge">${this.groupLabel(r.group)}</span>
             <span class="match-time-badge">${dualTime}</span>
             <div class="match-teams-block">
               <div class="match-teams-row">
@@ -915,7 +954,7 @@ const App = {
 
         html += `
           <div class="schedule-match upcoming${(matchStatus === 'live' || m.liveScore) ? ' live-match' : ''}" data-type="group" data-status="${matchStatus}">
-            <span class="match-group-badge">${m.group}组</span>
+            <span class="match-group-badge">${this.groupLabel(m.group)}</span>
             <span class="match-time-badge">${this._formatDualTime(m.time, m.venue)}${matchStatus !== 'live' && !m.liveScore && countdown ? ' <span class="countdown-text">(' + countdown + ')</span>' : ''}</span>
             <div class="match-teams-block">
               <div class="match-teams-row">
@@ -926,37 +965,37 @@ const App = {
               ${predHtml}
             </div>
             ${statusBadge}
-            <span class="match-venue-tag">📍 ${m.venue}</span>
+            <span class="match-venue-tag">📍 ${this.venueName(m.venue)}</span>
           </div>`;
       }
     }
 
     if (filter === 'all' || filter === 'knockout') {
       html += `
-        <div class="schedule-day-header">🏆 32强赛 (6月28日起) — 淘汰赛</div>
+        <div class="schedule-day-header">🏆 ${I18n.lang === 'zh' ? '32强赛 (6月28日起) — 淘汰赛' : I18n.lang === 'es' ? 'Ronda de 32 (desde 28 jun) — Eliminatoria' : I18n.lang === 'fr' ? '32es de finale (dès le 28 juin) — Éliminatoires' : 'Round of 32 (from Jun 28) — Knockout'}</div>
         <div class="schedule-match upcoming">
           <span class="match-group-badge">KO</span>
           <div class="match-teams-block">
             <div class="match-teams-row">
-              <span class="match-home">小组晋级队</span>
+              <span class="match-home">${I18n.lang === 'zh' ? '小组晋级队' : I18n.lang === 'es' ? 'Clasificado de grupo' : I18n.lang === 'fr' ? 'Qualifié de groupe' : 'Group Qualifier'}</span>
               <span class="match-score-block upcoming-label">VS</span>
-              <span class="match-away">小组晋级队</span>
+              <span class="match-away">${I18n.lang === 'zh' ? '小组晋级队' : I18n.lang === 'es' ? 'Clasificado de grupo' : I18n.lang === 'fr' ? 'Qualifié de groupe' : 'Group Qualifier'}</span>
             </div>
           </div>
-          <span class="match-status status-upcoming">待定</span>
-          <span class="match-venue-tag">多城市</span>
+          <span class="match-status status-upcoming">${t('common.TBD')}</span>
+          <span class="match-venue-tag">${I18n.lang === 'zh' ? '多城市' : I18n.lang === 'es' ? 'Multi-ciudad' : I18n.lang === 'fr' ? 'Multi-villes' : 'Multi-city'}</span>
         </div>
-        <div class="schedule-day-header">🏆 决赛 (7月19日) — 纽约 MetLife</div>
+        <div class="schedule-day-header">🏆 ${I18n.lang === 'zh' ? '决赛 (7月19日) — 纽约 MetLife' : I18n.lang === 'es' ? 'Final (19 jul) — Nueva York MetLife' : I18n.lang === 'fr' ? 'Finale (19 juil) — New York MetLife' : 'Final (Jul 19) — New York MetLife'}</div>
         <div class="schedule-match upcoming">
-          <span class="match-group-badge">决赛</span>
+          <span class="match-group-badge">${I18n.lang === 'zh' ? '决赛' : I18n.lang === 'es' ? 'Final' : I18n.lang === 'fr' ? 'Finale' : 'Final'}</span>
           <div class="match-teams-block">
             <div class="match-teams-row">
-              <span class="match-home">半决赛胜者</span>
+              <span class="match-home">${I18n.lang === 'zh' ? '半决赛胜者' : I18n.lang === 'es' ? 'Ganador SF' : I18n.lang === 'fr' ? 'Vainqueur DF' : 'SF Winner'}</span>
               <span class="match-score-block upcoming-label">VS</span>
-              <span class="match-away">半决赛胜者</span>
+              <span class="match-away">${I18n.lang === 'zh' ? '半决赛胜者' : I18n.lang === 'es' ? 'Ganador SF' : I18n.lang === 'fr' ? 'Vainqueur DF' : 'SF Winner'}</span>
             </div>
           </div>
-          <span class="match-status status-upcoming">待定</span>
+          <span class="match-status status-upcoming">${t('common.TBD')}</span>
           <span class="match-venue-tag">📍 MetLife</span>
         </div>`;
     }
@@ -1461,9 +1500,9 @@ const App = {
       });
 
       html += `<div class="group-card">
-        <div class="group-card-header">🏅 ${grp} 组</div>
+        <div class="group-card-header">🏅 ${grp} ${I18n.lang === 'zh' ? '组' : I18n.lang === 'es' ? 'Grupo' : I18n.lang === 'fr' ? 'Groupe' : 'Group'}</div>
         <table class="group-table">
-          <thead><tr><th>#</th><th>球队</th><th>场</th><th>胜</th><th>平</th><th>负</th><th>净</th><th>积分</th></tr></thead>
+          <thead><tr><th>${t('group.table.pos')}</th><th>${t('group.table.team')}</th><th>${t('group.table.played')}</th><th>${t('group.table.win')}</th><th>${t('group.table.draw')}</th><th>${t('group.table.loss')}</th><th>${t('group.table.gd')}</th><th>${t('group.table.pts')}</th></tr></thead>
           <tbody>
             ${teamList.map(([team, s], idx) => {
               const emoji = this.emoji(team);
@@ -1560,13 +1599,13 @@ const App = {
                 <div class="td-sub">${t.rank ? `FIFA 排名 #${t.rank.rank}` : ''} · ${teamGroup}组 · ${t.stats.worldcupWins > 0 ? '🏆'.repeat(t.stats.worldcupWins) : ''}</div>
               </div>
             </div>
-            <button class="td-close-btn" onclick="App.showTeamDetail('${t.name}')">✕ 收起</button>
+            <button class="td-close-btn" onclick="App.showTeamDetail('${t.name}')">✕ <span data-i18n="team.tab.close">${I18n.lang === 'zh' ? '收起' : I18n.lang === 'es' ? 'Cerrar' : I18n.lang === 'fr' ? 'Fermer' : 'Close'}</span></button>
           </div>
           <div class="td-tabs">
-            <button class="td-tab${activeTab==='squad'?' active':''}" onclick="App._switchTeamTab('squad','${t.name}')">💰 大名单身价</button>
-            <button class="td-tab${activeTab==='injuries'?' active':''}" onclick="App._switchTeamTab('injuries','${t.name}')">🏥 伤停信息</button>
-            <button class="td-tab${activeTab==='analysis'?' active':''}" onclick="App._switchTeamTab('analysis','${t.name}')">📊 世界杯分析</button>
-            <button class="td-tab${activeTab==='history'?' active':''}" onclick="App._switchTeamTab('history','${t.name}')">📜 历史对战</button>
+            <button class="td-tab${activeTab==='squad'?' active':''}" onclick="App._switchTeamTab('squad','${t.name}')">💰 ${I18n.lang === 'zh' ? '大名单身价' : I18n.lang === 'es' ? 'Plantilla y Valor' : I18n.lang === 'fr' ? 'Effectif & Valeur' : 'Squad & Value'}</button>
+            <button class="td-tab${activeTab==='injuries'?' active':''}" onclick="App._switchTeamTab('injuries','${t.name}')">🏥 ${t('team.tab.injuries')}</button>
+            <button class="td-tab${activeTab==='analysis'?' active':''}" onclick="App._switchTeamTab('analysis','${t.name}')">📊 ${t('team.tab.analysis')}</button>
+            <button class="td-tab${activeTab==='history'?' active':''}" onclick="App._switchTeamTab('history','${t.name}')">📜 ${I18n.lang === 'zh' ? '历史对战' : I18n.lang === 'es' ? 'Historial' : I18n.lang === 'fr' ? 'Historique' : 'History'}</button>
           </div>
           <div class="td-content">
             ${tabContent}
@@ -1610,13 +1649,10 @@ const App = {
     const panel = document.getElementById('inlineTeamDetail');
     if (!panel) { this.showTeamDetail(teamName); return; }
 
-    // Update tab active states
-    panel.querySelectorAll('.td-tab').forEach(btn => {
-      const btnTab = btn.textContent.includes('大名单') ? 'squad'
-        : btn.textContent.includes('伤停') ? 'injuries'
-        : btn.textContent.includes('分析') ? 'analysis'
-        : 'history';
-      btn.classList.toggle('active', btnTab === tab);
+    // Update tab active states using data attribute
+    panel.querySelectorAll('.td-tab').forEach((btn, idx) => {
+      const tabOrder = ['squad', 'injuries', 'analysis', 'history'];
+      btn.classList.toggle('active', tabOrder[idx] === tab);
     });
 
     // Update content area only
@@ -1838,7 +1874,7 @@ const App = {
             return `<div class="h-match h-upcoming">
               <span class="hm-result">⏳</span>
               <span class="hm-teams">${emoji} ${zh} vs ${oppZh} ${oppE}</span>
-              <span class="hm-info">${m.group}组 · ${m.date} ${dualTime}</span>
+              <span class="hm-info">${this.groupLabel(m.group)} · ${m.date} ${dualTime}</span>
             </div>`;
           }).join('')}
         </div>`;
@@ -1929,7 +1965,8 @@ const App = {
 
     // 密钥已在服务端，始终就绪
     DeepSeekEngine.loadApiKey();
-    if (keyStatus) this._showKeyStatus(keyStatus, 'ok', '✅ AI 分析引擎就绪（Claude Opus 4.7 + MiMo · 服务器代理 + 本地备用）');
+    const readyMsg = I18n.lang === 'zh' ? '✅ AI 分析引擎就绪（Claude Opus 4.7 + MiMo · 服务器代理 + 本地备用）' : I18n.lang === 'es' ? '✅ Motor de análisis IA listo (Claude Opus 4.7 + MiMo · Proxy + Local)' : I18n.lang === 'fr' ? '✅ Moteur IA prêt (Claude Opus 4.7 + MiMo · Proxy + Local)' : '✅ AI analysis engine ready (Claude Opus 4.7 + MiMo · Proxy + Local fallback)';
+    if (keyStatus) this._showKeyStatus(keyStatus, 'ok', readyMsg);
 
     if (analyzeBtn) {
       analyzeBtn.addEventListener('click', async () => {
@@ -1969,7 +2006,8 @@ const App = {
 
     // 显示加载状态
     analyzeBtn.disabled = true;
-    btnContent.innerHTML = `<div class="ds-loading-dots"><span></span><span></span><span></span></div> 🤖 双AI引擎并行分析中...`;
+    const loadingText = I18n.lang === 'zh' ? '🤖 双AI引擎并行分析中...' : I18n.lang === 'es' ? '🤖 Análisis paralelo de doble IA...' : I18n.lang === 'fr' ? '🤖 Analyse double IA en cours...' : '🤖 Dual AI engine analyzing...';
+    btnContent.innerHTML = `<div class="ds-loading-dots"><span></span><span></span><span></span></div> ${loadingText}`;
 
     const dsScoreEl = document.getElementById('dsAIScore');
     const dsNoteEl = document.getElementById('dsAINote');
@@ -1977,9 +2015,9 @@ const App = {
     const mimoNoteEl = document.getElementById('mimoAINote');
 
     if (dsScoreEl) dsScoreEl.textContent = '...';
-    if (dsNoteEl) dsNoteEl.textContent = '分析中...';
+    if (dsNoteEl) dsNoteEl.textContent = t('dual.analyzing');
     if (mimoScoreEl) mimoScoreEl.textContent = '...';
-    if (mimoNoteEl) mimoNoteEl.textContent = '分析中...';
+    if (mimoNoteEl) mimoNoteEl.textContent = t('dual.analyzing');
 
     const dsContent = document.getElementById('dsContent');
     const mimoContent = document.getElementById('mimoContent');
@@ -2020,10 +2058,10 @@ const App = {
 
     // 提取 DeepSeek 比分
     const dsScore = this._extractScore(dsData.content);
-    if (dsScoreEl) dsScoreEl.textContent = dsScore || '见报告';
-    if (dsNoteEl) dsNoteEl.textContent = dsUsedLocal ? '本地引擎' : 'Claude Opus';
+    if (dsScoreEl) dsScoreEl.textContent = dsScore || t('dual.seeReport');
+    if (dsNoteEl) dsNoteEl.textContent = dsUsedLocal ? t('dual.localEngine') : 'Claude Opus';
     const dsTokenInfo = document.getElementById('dsTokenInfo');
-    if (dsTokenInfo) dsTokenInfo.textContent = dsUsedLocal ? '本地统计分析' : `消耗 ${dsData.tokens || 0} tokens`;
+    if (dsTokenInfo) dsTokenInfo.textContent = dsUsedLocal ? t('dual.localAnalysis') : `${t('dual.tokens')} ${dsData.tokens || 0} tokens`;
 
     // ── 处理 MiMo 结果 ──
     let mimoData = mimoResult.status === 'fulfilled' ? mimoResult.value : null;
@@ -2040,17 +2078,17 @@ const App = {
 
     // 提取 MiMo 比分
     const mimoScore = this._extractScore(mimoData.content);
-    if (mimoScoreEl) mimoScoreEl.textContent = mimoScore || '见报告';
-    if (mimoNoteEl) mimoNoteEl.textContent = mimoUsedLocal ? '本地引擎' : 'MiMo';
+    if (mimoScoreEl) mimoScoreEl.textContent = mimoScore || t('dual.seeReport');
+    if (mimoNoteEl) mimoNoteEl.textContent = mimoUsedLocal ? t('dual.localEngine') : 'MiMo';
     const mimoTokenInfo = document.getElementById('mimoTokenInfo');
-    if (mimoTokenInfo) mimoTokenInfo.textContent = mimoUsedLocal ? '本地备用分析' : `消耗 ${mimoData.tokens || 0} tokens`;
+    if (mimoTokenInfo) mimoTokenInfo.textContent = mimoUsedLocal ? t('dual.localAnalysis') : `${t('dual.tokens')} ${mimoData.tokens || 0} tokens`;
 
     // ── 综合研判 ──
     this._renderConsensus(dsData, mimoData, dsScore, mimoScore, pred, homeZh, awayZh, dsUsedLocal, mimoUsedLocal);
 
     // 更新按钮
     analyzeBtn.disabled = false;
-    btnContent.innerHTML = '🔄 刷新双模型对比分析';
+    btnContent.innerHTML = I18n.lang === 'zh' ? '🔄 刷新双模型对比分析' : I18n.lang === 'es' ? '🔄 Actualizar análisis doble' : I18n.lang === 'fr' ? '🔄 Rafraîchir l\'analyse double' : '🔄 Refresh Dual Model Analysis';
 
     // 更新模型徽章
     const badge = document.getElementById('dsModelBadge');
@@ -2058,13 +2096,13 @@ const App = {
       const dsOk = !dsUsedLocal;
       const mimoOk = !mimoUsedLocal;
       if (dsOk && mimoOk) {
-        badge.textContent = '双模型在线';
+        badge.textContent = t('dual.online');
         badge.style.background = 'rgba(59,130,246,0.25)';
       } else if (dsOk || mimoOk) {
-        badge.textContent = '部分在线';
+        badge.textContent = t('dual.partial');
         badge.style.background = 'rgba(251,191,36,0.25)';
       } else {
-        badge.textContent = '本地引擎';
+        badge.textContent = t('dual.local');
         badge.style.background = '#16a34a';
       }
     }
@@ -2123,17 +2161,19 @@ const App = {
       // 完全一致
       if (consistencyEl) { consistencyEl.style.display = 'flex'; }
       if (consIcon) consIcon.textContent = '🤝';
-      if (consText) consText.textContent = '一致';
+      if (consText) consText.textContent = t('dual.consistent');
+      const agreeText = I18n.lang === 'zh' ? '双模型预测一致' : I18n.lang === 'es' ? 'Ambos modelos coinciden' : I18n.lang === 'fr' ? 'Les deux modèles concordent' : 'Both models agree';
+      const agreeNote = I18n.lang === 'zh' ? '两个独立AI模型给出相同比分，预测可信度显著提升' : I18n.lang === 'es' ? 'Dos modelos de IA independientes dan el mismo marcador, la confiabilidad mejora significativamente' : I18n.lang === 'fr' ? 'Deux modèles IA indépendants donnent le même score, la fiabilité s\'améliore significativement' : 'Two independent AI models gave the same score, prediction reliability significantly improved';
       consensusHtml = `<div class="consensus-agree">
         <div class="consensus-agree-icon">🤝</div>
-        <div class="consensus-agree-text">双模型预测一致：<strong>${dsScore}</strong></div>
-        <div class="consensus-agree-note">两个独立AI模型给出相同比分，预测可信度显著提升</div>
+        <div class="consensus-agree-text">${agreeText}：<strong>${dsScore}</strong></div>
+        <div class="consensus-agree-note">${agreeNote}</div>
       </div>`;
     } else if (dsScore && mimoScore) {
       // 不一致
       if (consistencyEl) { consistencyEl.style.display = 'flex'; }
       if (consIcon) consIcon.textContent = '⚡';
-      if (consText) consText.textContent = '分歧';
+      if (consText) consText.textContent = t('dual.divergent');
 
       // 判断方向是否一致（主胜/平/客胜）
       const dsHome = parseInt(dsScore.split(':')[0]);
@@ -2144,23 +2184,29 @@ const App = {
       const mimoDirection = mimoHome > mimoAway ? 'home' : (mimoHome < mimoAway ? 'away' : 'draw');
 
       if (dsDirection === mimoDirection) {
+        const dirText = dsDirection === 'home' ? homeZh + (I18n.lang === 'zh' ? '胜' : ' Win') : (dsDirection === 'away' ? awayZh + (I18n.lang === 'zh' ? '胜' : ' Win') : (I18n.lang === 'zh' ? '平局' : 'Draw'));
+        const dirLabel = I18n.lang === 'zh' ? '方向一致' : I18n.lang === 'es' ? 'Dirección coincide' : I18n.lang === 'fr' ? 'Direction identique' : 'Direction agrees';
+        const detailText = I18n.lang === 'zh' ? `Claude预测 ${dsScore} / MiMo预测 ${mimoScore}，比分不同但方向一致` : I18n.lang === 'es' ? `Claude: ${dsScore} / MiMo: ${mimoScore}, marcadores diferentes pero misma dirección` : I18n.lang === 'fr' ? `Claude: ${dsScore} / MiMo: ${mimoScore}, scores différents mais même direction` : `Claude: ${dsScore} / MiMo: ${mimoScore}, different scores but same direction`;
         consensusHtml = `<div class="consensus-partial">
           <div class="consensus-partial-icon">✅</div>
-          <div class="consensus-partial-text">方向一致：${dsDirection === 'home' ? homeZh + '胜' : (dsDirection === 'away' ? awayZh + '胜' : '平局')}</div>
-          <div class="consensus-partial-detail">Claude预测 ${dsScore} / MiMo预测 ${mimoScore}，比分不同但方向一致</div>
+          <div class="consensus-partial-text">${dirLabel}：${dirText}</div>
+          <div class="consensus-partial-detail">${detailText}</div>
         </div>`;
       } else {
+        const disagreeText = I18n.lang === 'zh' ? '模型分歧' : I18n.lang === 'es' ? 'Modelos difieren' : I18n.lang === 'fr' ? 'Modèles divergent' : 'Models disagree';
+        const disagreeDetail = I18n.lang === 'zh' ? `两个模型预测方向不同，建议参考统计模型（主胜${hPct}% / 平${dPct}% / 客胜${aPct}%）综合判断` : I18n.lang === 'es' ? `Los modelos predicen direcciones diferentes, consulta el modelo estadístico (Local ${hPct}% / Empate ${dPct}% / Visitante ${aPct}%)` : I18n.lang === 'fr' ? `Les modèles prédisent des directions différentes, consultez le modèle statistique (Domicile ${hPct}% / Nul ${dPct}% / Extérieur ${aPct}%)` : `Models predict different directions, refer to statistical model (Home ${hPct}% / Draw ${dPct}% / Away ${aPct}%)`;
         consensusHtml = `<div class="consensus-disagree">
           <div class="consensus-disagree-icon">⚡</div>
-          <div class="consensus-disagree-text">模型分歧：Claude ${dsScore} vs MiMo ${mimoScore}</div>
-          <div class="consensus-disagree-detail">两个模型预测方向不同，建议参考统计模型（主胜${hPct}% / 平${dPct}% / 客胜${aPct}%）综合判断</div>
+          <div class="consensus-disagree-text">${disagreeText}：Claude ${dsScore} vs MiMo ${mimoScore}</div>
+          <div class="consensus-disagree-detail">${disagreeDetail}</div>
         </div>`;
       }
     } else {
       // 至少一个没有比分
       if (consistencyEl) { consistencyEl.style.display = 'none'; }
+      const noScoreText = I18n.lang === 'zh' ? '部分模型未返回有效比分，请参考各自分析报告' : I18n.lang === 'es' ? 'Algunos modelos no devolvieron marcador válido, consulta los informes individuales' : I18n.lang === 'fr' ? 'Certains modèles n\'ont pas retourné de score valide, consultez les rapports individuels' : 'Some models did not return valid scores, please refer to individual reports';
       consensusHtml = `<div class="consensus-loading">
-        <div>部分模型未返回有效比分，请参考各自分析报告</div>
+        <div>${noScoreText}</div>
       </div>`;
     }
 

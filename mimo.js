@@ -59,9 +59,10 @@ const MimoEngine = {
       return { error: true, message: `Prompt 构建失败: ${e.message}` };
     }
 
+    const systemPrompt = (typeof t !== 'undefined') ? t('ai.system.mimo') : '你是一位世界顶级足球分析师，精通数据分析和战术解读，拥有20年世界杯报道经验。请基于数据做出客观、专业且简洁的分析，控制在400字内。你是独立的AI分析师，请给出你自己的独立判断。';
     const payload = {
       model: 'mimo',
-      system: '你是一位世界顶级足球分析师，精通数据分析和战术解读，拥有20年世界杯报道经验。请基于数据做出客观、专业且简洁的分析，控制在400字内。你是独立的AI分析师，请给出你自己的独立判断。',
+      system: systemPrompt,
       user: prompt,
       max_tokens: 2000,
       temperature: 0.7,

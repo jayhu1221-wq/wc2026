@@ -9,30 +9,39 @@
   <title>⚽ 2026 FIFA 世界杯 AI 比分预测</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260623c" />
+  <link rel="stylesheet" href="styles.css?v=20260623d" />
 </head>
 <body>
   <!-- Hero Header -->
   <header class="hero-header">
     <div class="header-bg"></div>
     <div class="header-content">
-      <div class="header-badge">🏆 2026 美加墨世界杯 · 23rd FIFA World Cup · USA · Canada · México</div>
-      <h1 class="hero-title">AI 比分预测系统</h1>
-      <p class="hero-subtitle">融合历史对战 · 球队实力 · 伤停情报 · 阵容分析 · 天气因素的六维智能引擎</p>
+      <!-- Language Switcher -->
+      <div class="lang-switcher-wrap">
+        <select id="langSwitcher" class="lang-switcher" onchange="I18n.setLang(this.value)">
+          <option value="zh">🇨🇳 中文</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="fr">🇫🇷 Français</option>
+        </select>
+      </div>
+      <div class="header-badge" data-i18n="header.badge">🏆 2026 美加墨世界杯 · 23rd FIFA World Cup · USA · Canada · México</div>
+      <h1 class="hero-title" data-i18n="header.title">AI 比分预测系统</h1>
+      <p class="hero-subtitle" data-i18n="header.subtitle">融合历史对战 · 球队实力 · 伤停情报 · 阵容分析 · 天气因素的六维智能引擎</p>
       <div class="header-stats">
-        <div class="stat-item"><span class="stat-num">48</span><span class="stat-label">参赛球队</span></div>
+        <div class="stat-item"><span class="stat-num">48</span><span class="stat-label" data-i18n="header.stat.teams">参赛球队</span></div>
         <div class="stat-divider"></div>
-        <div class="stat-item"><span class="stat-num">104</span><span class="stat-label">比赛场次</span></div>
+        <div class="stat-item"><span class="stat-num">104</span><span class="stat-label" data-i18n="header.stat.matches">比赛场次</span></div>
         <div class="stat-divider"></div>
-        <div class="stat-item"><span class="stat-num">12</span><span class="stat-label">小组</span></div>
+        <div class="stat-item"><span class="stat-num">12</span><span class="stat-label" data-i18n="header.stat.groups">小组</span></div>
         <div class="stat-divider"></div>
-        <div class="stat-item"><span class="stat-num">16</span><span class="stat-label">举办城市</span></div>
+        <div class="stat-item"><span class="stat-num">16</span><span class="stat-label" data-i18n="header.stat.cities">举办城市</span></div>
       </div>
       <!-- Refresh Bar -->
       <div class="refresh-bar" id="refreshBar">
-        <span>🌐 服务器代理实时数据 · 每次刷新自动同步 · 页面倒计时 <strong id="refreshCountdown">5:00</strong></span>
-        <span class="refresh-time">上次同步 <span id="refreshTime">--</span></span>
-        <button class="refresh-now-btn" onclick="App.doRefresh()">⚡ 立即同步</button>
+        <span><span data-i18n="refresh.bar">🌐 服务器代理实时数据 · 每次刷新自动同步 · 页面倒计时</span> <strong id="refreshCountdown">5:00</strong></span>
+        <span class="refresh-time"><span data-i18n="refresh.last">上次同步</span> <span id="refreshTime">--</span></span>
+        <button class="refresh-now-btn" onclick="App.doRefresh()" data-i18n="refresh.now">⚡ 立即同步</button>
       </div>
     </div>
   </header>
@@ -40,12 +49,12 @@
   <!-- Navigation Tabs -->
   <nav class="main-nav">
     <div class="nav-container">
-      <button class="nav-tab active" data-tab="predict">🤖 AI 预测</button>
-      <button class="nav-tab" data-tab="schedule">📅 赛程表</button>
-      <button class="nav-tab" data-tab="results">📊 已赛结果</button>
-      <button class="nav-tab" data-tab="groups">🏅 小组积分</button>
-      <button class="nav-tab" data-tab="bracket">🏆 淘汰赛</button>
-      <button class="nav-tab" data-tab="teams">⚡ 球队实力</button>
+      <button class="nav-tab active" data-tab="predict" data-i18n="nav.predict">🤖 AI 预测</button>
+      <button class="nav-tab" data-tab="schedule" data-i18n="nav.schedule">📅 赛程表</button>
+      <button class="nav-tab" data-tab="results" data-i18n="nav.results">📊 已赛结果</button>
+      <button class="nav-tab" data-tab="groups" data-i18n="nav.groups">🏅 小组积分</button>
+      <button class="nav-tab" data-tab="bracket" data-i18n="nav.bracket">🏆 淘汰赛</button>
+      <button class="nav-tab" data-tab="teams" data-i18n="nav.teams">⚡ 球队实力</button>
     </div>
   </nav>
 
@@ -55,15 +64,15 @@
     <!-- ======================== TAB: AI 预测 ======================== -->
     <section id="tab-predict" class="tab-content active">
       <div class="section-header">
-        <h2>🤖 智能比分预测</h2>
-        <p>基于历史对战 · FIFA排名 · 近期状态 · 天气因素 · Claude Opus AI 综合分析的预测引擎</p>
+        <h2 data-i18n="predict.header">🤖 智能比分预测</h2>
+        <p data-i18n="predict.desc">基于历史对战 · FIFA排名 · 近期状态 · 天气因素 · Claude Opus AI 综合分析的预测引擎</p>
       </div>
 
       <!-- Today's Matches Panel -->
       <div class="today-panel">
         <div class="today-header">
-          <div class="today-title">📅 比赛预测 <span class="today-date-badge">今日 & 明日</span></div>
-          <div class="today-subtitle">点击任意比赛卡片查看完整 AI 分析报告 · 串关建议覆盖今明两日</div>
+          <div class="today-title"><span data-i18n="predict.today">📅 比赛预测</span> <span class="today-date-badge" data-i18n="predict.today.badge">今日 & 明日</span></div>
+          <div class="today-subtitle" data-i18n="predict.today.subtitle">点击任意比赛卡片查看完整 AI 分析报告 · 串关建议覆盖今明两日</div>
         </div>
         <div class="today-matches-grid" id="todayPredictions"></div>
       </div>
@@ -88,7 +97,7 @@
               <div class="prob-section away-prob" id="awayProbBar"><span class="prob-label" id="awayProb">-</span></div>
             </div>
             <div class="prob-legend">
-              <span class="legend-dot home-dot"></span>主队<span class="legend-dot draw-dot"></span>平<span class="legend-dot away-dot"></span>客队
+              <span class="legend-dot home-dot"></span><span data-i18n="predict.prob.home">主队</span><span class="legend-dot draw-dot"></span><span data-i18n="predict.prob.draw">平</span><span class="legend-dot away-dot"></span><span data-i18n="predict.prob.away">客队</span>
             </div>
           </div>
           <div class="result-team away-side">
@@ -102,19 +111,19 @@
         <div class="lottery-section" id="lotterySection" style="display:none;">
           <div class="lottery-header">
             <span class="lottery-icon">🎫</span>
-            <span class="lottery-title">体育彩票 · 串关建议</span>
-            <span class="lottery-subtitle">AI 辅助参考</span>
+            <span class="lottery-title" data-i18n="lottery.title">体育彩票 · 串关建议</span>
+            <span class="lottery-subtitle" data-i18n="lottery.subtitle">AI 辅助参考</span>
           </div>
           <div class="parlay-grid" id="parlayGrid"></div>
-          <div class="lottery-disclaimer">⚠️ 以上赔率为AI模型估算参考值，不构成投注建议。请理性参与，量力而行。</div>
+          <div class="lottery-disclaimer" data-i18n="lottery.disclaimer">⚠️ 以上赔率为AI模型估算参考值，不构成投注建议。请理性参与，量力而行。</div>
         </div>
 
         <!-- AI 预测理由 -->
         <div class="reasoning-section">
           <div class="reasoning-header">
             <span class="reasoning-icon">🧠</span>
-            <span class="reasoning-title">AI 预测理由</span>
-            <span class="reasoning-subtitle">基于5维度综合分析</span>
+            <span class="reasoning-title" data-i18n="reasoning.title">AI 预测理由</span>
+            <span class="reasoning-subtitle" data-i18n="reasoning.subtitle">基于5维度综合分析</span>
           </div>
           <div class="reasoning-list" id="reasoningList"></div>
         </div>
@@ -122,19 +131,19 @@
         <!-- Analysis Grid -->
         <div class="analysis-grid">
           <div class="analysis-card">
-            <h4>📈 历史对战记录</h4>
+            <h4 data-i18n="analysis.h2h">📈 历史对战记录</h4>
             <div id="h2hData" class="analysis-content"></div>
           </div>
           <div class="analysis-card">
-            <h4>⚡ 近期状态</h4>
+            <h4 data-i18n="analysis.form">⚡ 近期状态</h4>
             <div id="formData" class="analysis-content"></div>
           </div>
           <div class="analysis-card">
-            <h4>🎯 进攻 & 防守指数</h4>
+            <h4 data-i18n="analysis.attack">🎯 进攻 & 防守指数</h4>
             <div id="attackData" class="analysis-content"></div>
           </div>
           <div class="analysis-card">
-            <h4>👥 关键球员 & 战术</h4>
+            <h4 data-i18n="analysis.players">👥 关键球员 & 战术</h4>
             <div id="playerData" class="analysis-content"></div>
           </div>
         </div>
@@ -144,10 +153,10 @@
           <div class="ds-header">
             <div class="ds-logo">🤖</div>
             <div class="ds-title-wrap">
-              <div class="ds-title">双AI大模型对比分析</div>
-              <div class="ds-subtitle">Claude Opus 4.7 × 小米MiMo 双引擎独立预测 · 交叉验证提升准确率</div>
+              <div class="ds-title" data-i18n="dual.title">双AI大模型对比分析</div>
+              <div class="ds-subtitle" data-i18n="dual.subtitle">Claude Opus 4.7 × 小米MiMo 双引擎独立预测 · 交叉验证提升准确率</div>
             </div>
-            <div class="ds-model-badge" id="dsModelBadge" style="background:rgba(168,85,247,0.25);color:#c4b5fd;">双模型</div>
+            <div class="ds-model-badge" id="dsModelBadge" style="background:rgba(168,85,247,0.25);color:#c4b5fd;" data-i18n="dual.badge">双模型</div>
           </div>
           <div class="ds-key-status" id="dsKeyStatus"></div>
 
@@ -155,27 +164,27 @@
           <div class="dual-compare-bar" id="dualCompareBar">
             <div class="dual-model-box deepseek-box">
               <div class="dual-model-logo">🟣</div>
-              <div class="dual-model-label">Claude Opus 4.7</div>
+              <div class="dual-model-label" data-i18n="dual.claude">Claude Opus 4.7</div>
               <div class="dual-model-score" id="dsAIScore">-</div>
-              <div class="dual-model-note" id="dsAINote">等待分析</div>
+              <div class="dual-model-note" id="dsAINote" data-i18n="dual.waiting">等待分析</div>
             </div>
             <div class="dual-vs-divider">
               <div class="dual-vs-text">VS</div>
               <div class="dual-consistency" id="dualConsistency" style="display:none;">
                 <span id="consistencyIcon">🤝</span>
-                <span id="consistencyText">一致</span>
+                <span id="consistencyText" data-i18n="dual.consistent">一致</span>
               </div>
             </div>
             <div class="dual-model-box mimo-box">
               <div class="dual-model-logo">🟠</div>
-              <div class="dual-model-label">MiMo-V2.5-Pro</div>
+              <div class="dual-model-label" data-i18n="dual.mimo">MiMo-V2.5-Pro</div>
               <div class="dual-model-score" id="mimoAIScore">-</div>
-              <div class="dual-model-note" id="mimoAINote">等待分析</div>
+              <div class="dual-model-note" id="mimoAINote" data-i18n="dual.waiting">等待分析</div>
             </div>
           </div>
 
           <button class="ds-analyze-btn" id="dsAnalyzeBtn">
-            <span id="dsAnalyzeBtnContent">🔄 双模型对比分析</span>
+            <span id="dsAnalyzeBtnContent" data-i18n="dual.btn">🔄 双模型对比分析</span>
           </button>
 
           <!-- 双模型结果并排显示 -->
@@ -184,7 +193,7 @@
             <div class="dual-result-panel ds-panel">
               <div class="dual-result-header">
                 <span class="dual-result-icon">🟣</span>
-                <span class="dual-result-title">Claude Opus 4.7 分析</span>
+                <span class="dual-result-title" data-i18n="dual.claude.title">Claude Opus 4.7 分析</span>
                 <span class="dual-result-badge deepseek-badge">claude-opus-4.7</span>
               </div>
               <div class="ds-content" id="dsContent"></div>
@@ -196,7 +205,7 @@
             <div class="dual-result-panel mimo-panel">
               <div class="dual-result-header">
                 <span class="dual-result-icon">🟠</span>
-                <span class="dual-result-title">小米 MiMo 分析</span>
+                <span class="dual-result-title" data-i18n="dual.mimo.title">小米 MiMo 分析</span>
                 <span class="dual-result-badge mimo-badge">mimo-v2.5-pro</span>
               </div>
               <div class="ds-content" id="mimoContent"></div>
@@ -208,18 +217,18 @@
 
           <!-- 综合研判 -->
           <div class="consensus-panel" id="consensusPanel" style="display:none;">
-            <div class="consensus-header">🎯 综合研判</div>
+            <div class="consensus-header" data-i18n="dual.consensus">🎯 综合研判</div>
             <div class="consensus-content" id="consensusContent"></div>
           </div>
 
-          <div class="ds-tips" id="dsTips">
+          <div class="ds-tips" id="dsTips" data-i18n="dual.tips">
             🤖 <strong>双AI引擎已就绪</strong> — Claude Opus 4.7 + 小米MiMo 独立分析，交叉验证提升预测可靠性
           </div>
         </div>
 
         <!-- Score Distribution -->
         <div class="score-distribution">
-          <h4>🎲 比分概率分布（Top 8）</h4>
+          <h4 data-i18n="scoredist.title">🎲 比分概率分布（Top 8）</h4>
           <div class="score-dist-grid" id="scoreDistGrid"></div>
         </div>
       </div>
@@ -228,15 +237,15 @@
     <!-- ======================== TAB: 赛程表 ======================== -->
     <section id="tab-schedule" class="tab-content">
       <div class="section-header">
-        <h2>📅 完整赛程表</h2>
-        <p>全部 104 场比赛 · 🟢绿色=终场 · 🔴红色=AI预测 · 🥇首选🥈次选🎯防冷</p>
+        <h2 data-i18n="schedule.header">📅 完整赛程表</h2>
+        <p data-i18n="schedule.desc">全部 104 场比赛 · 🟢绿色=终场 · 🔴红色=AI预测 · 🥇首选🥈次选🎯防冷</p>
       </div>
       <div class="schedule-filter">
-        <button class="filter-btn active" data-filter="all">全部</button>
-        <button class="filter-btn" data-filter="group">小组赛</button>
-        <button class="filter-btn" data-filter="knockout">淘汰赛</button>
-        <button class="filter-btn" data-filter="upcoming">即将进行</button>
-        <button class="filter-btn" data-filter="completed">已赛</button>
+        <button class="filter-btn active" data-filter="all" data-i18n="schedule.all">全部</button>
+        <button class="filter-btn" data-filter="group" data-i18n="schedule.group">小组赛</button>
+        <button class="filter-btn" data-filter="knockout" data-i18n="schedule.knockout">淘汰赛</button>
+        <button class="filter-btn" data-filter="upcoming" data-i18n="schedule.upcoming">即将进行</button>
+        <button class="filter-btn" data-filter="completed" data-i18n="schedule.completed">已赛</button>
       </div>
       <div class="schedule-list" id="scheduleList"></div>
     </section>
@@ -244,8 +253,8 @@
     <!-- ======================== TAB: 已赛结果 ======================== -->
     <section id="tab-results" class="tab-content">
       <div class="section-header">
-        <h2>📊 已赛结果</h2>
-        <p>截止目前的全部比赛结果（6月11日起）</p>
+        <h2 data-i18n="results.header">📊 已赛结果</h2>
+        <p data-i18n="results.desc">截止目前的全部比赛结果（6月11日起）</p>
       </div>
       <div class="results-grid" id="resultsGrid"></div>
     </section>
@@ -253,8 +262,8 @@
     <!-- ======================== TAB: 小组积分 ======================== -->
     <section id="tab-groups" class="tab-content">
       <div class="section-header">
-        <h2>🏅 小组积分榜</h2>
-        <p>实时积分排名 · 全部 12 个小组</p>
+        <h2 data-i18n="groups.header">🏅 小组积分榜</h2>
+        <p data-i18n="groups.desc">实时积分排名 · 全部 12 个小组</p>
       </div>
       <div class="groups-grid" id="groupsGrid"></div>
     </section>
@@ -262,8 +271,8 @@
     <!-- ======================== TAB: 淘汰赛 ======================== -->
     <section id="tab-bracket" class="tab-content">
       <div class="section-header">
-        <h2>🏆 淘汰赛对阵图</h2>
-        <p>小组前2名 + 8个最佳第3名晋级32强 · 根据积分自动填充晋级队伍</p>
+        <h2 data-i18n="bracket.header">🏆 淘汰赛对阵图</h2>
+        <p data-i18n="bracket.desc">小组前2名 + 8个最佳第3名晋级32强 · 根据积分自动填充晋级队伍</p>
       </div>
       <div class="bracket-container" id="bracketContainer"></div>
     </section>
@@ -271,12 +280,12 @@
     <!-- ======================== TAB: 球队实力 ======================== -->
     <section id="tab-teams" class="tab-content">
       <div class="section-header">
-        <h2>⚡ 球队综合实力排行</h2>
-        <p>基于 FIFA 排名、历史战绩、近期表现综合评分 · 全部48支参赛队 · 点击球队查看详情</p>
+        <h2 data-i18n="teams.header">⚡ 球队综合实力排行</h2>
+        <p data-i18n="teams.desc">基于 FIFA 排名、历史战绩、近期表现综合评分 · 全部48支参赛队 · 点击球队查看详情</p>
       </div>
       <!-- 球队搜索 -->
       <div class="teams-search-bar">
-        <input type="text" id="teamSearchInput" class="teams-search-input" placeholder="🔍 搜索球队名称..." />
+        <input type="text" id="teamSearchInput" class="teams-search-input" data-i18n-placeholder="teams.search" placeholder="🔍 搜索球队名称..." />
       </div>
       <div class="teams-power-list" id="teamsPowerList"></div>
     </section>
@@ -285,9 +294,9 @@
 
   <footer class="site-footer">
     <div class="footer-content">
-      <p>📊 数据来源：FIFA 官方、历史赛事记录、国际足联排名（2026年6月更新） · 🌤️ 天气：Open-Meteo</p>
-      <p>🤖 AI 预测仅供参考，基于统计模型 + 蒙特卡洛模拟 + Claude Opus 4.7 大模型分析 · ⚠️ 理性投注 切勿沉迷</p>
-      <p class="footer-copy">2026 FIFA World Cup AI Predictor · 服务器代理实时数据 · API密钥安全隐藏</p>
+      <p data-i18n="footer.data">📊 数据来源：FIFA 官方、历史赛事记录、国际足联排名（2026年6月更新） · 🌤️ 天气：Open-Meteo</p>
+      <p data-i18n="footer.ai">🤖 AI 预测仅供参考，基于统计模型 + 蒙特卡洛模拟 + Claude Opus 4.7 大模型分析 · ⚠️ 理性投注 切勿沉迷</p>
+      <p class="footer-copy" data-i18n="footer.copy">2026 FIFA World Cup AI Predictor · 服务器代理实时数据 · API密钥安全隐藏</p>
     </div>
   </footer>
 
@@ -295,6 +304,7 @@
   <script>
   (function() {
     const scripts = [
+      'i18n.js',     // ← 必须最先加载
       'data.js',
       'predictor.js',
       'weather.js',
@@ -308,7 +318,7 @@
     let i = 0;
     function loadNext() {
       if (i >= scripts.length) {
-        console.log('✅ 所有脚本加载完成');
+        console.log('✅ All scripts loaded');
         return;
       }
       const s = document.createElement('script');
@@ -318,7 +328,7 @@
         loadNext();
       };
       s.onerror = function() {
-        console.warn('脚本加载失败: ' + scripts[i]);
+        console.warn('Script load failed: ' + scripts[i]);
         i++;
         loadNext();
       };
