@@ -1,113 +1,78 @@
 // ============================================
-// mimo.js — 小米 MiMo-V2.5-Pro AI 分析引擎 v2
-// 改为通过服务器代理调用，API 密钥仅在服务端
-// 与 Claude Opus 4.7 双模型对比分析
+// mimo.js — AI 分析提示词生成器（简版）v4
+// 不再调用任何外部 API
+// 生成更简短的关键词导向 Prompt，与 deepseek.js 互补
+// 保留 MimoEngine 对象名以兼容 app.js
 // ============================================
 
 const MimoEngine = {
 
-  // 密钥已移至服务端
   apiKey: '',
-  model: 'mimo-v2.5-pro',
-  baseUrl: '/api/ai-analysis',  // 服务器代理端点
+  model: 'prompt-generator-lite',
+  baseUrl: '',
 
-  setApiKey(key) {
-    // No-op: 密钥在服务端
-  },
+  setApiKey(key) { },
+  loadApiKey() { this.apiKey = 'prompt-mode'; return this.apiKey; },
+  isConfigured() { return true; },
 
-  loadApiKey() {
-    this.apiKey = 'server-proxy';
-    return this.apiKey;
-  },
-
-  isConfigured() {
-    // 始终 true：服务器代理处理密钥
-    return true;
-  },
-
-  // ── 复用 DeepSeek 的 prompt 构建逻辑 ──
+  // ── 生成简短版 Prompt（关键词导向）──
   buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence) {
-    if (typeof DeepSeekEngine !== 'undefined' && DeepSeekEngine.buildPrompt) {
-      return DeepSeekEngine.buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence);
-    }
-    return `请分析2026年FIFA世界杯比赛：${homeZh} vs ${awayZh}，给出专业比分预测（500字内）。`;
-  },
+    const r = predResult;
+    const hs = r.homeStats || {};
+    const as = r.awayStats || {};
+    const comp = r.components || {};
+    const h2h = comp.h2h || {};
+    const ad = comp.attackDefense || {};
+    const homeRank = r.homeRank ? r.homeRank.rank : '?';
+    const awayRank = r.awayRank ? r.awayRank.rank : '?';
 
-  // ── 带超时的 fetch ──
-  async fetchWithTimeout(url, options, timeoutMs = 30000) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        throw new Error('TIMEOUT');
+    const homeWinPct = Math.round((r.homeWinProb || 0.5) * 100);
+    const awayWinPct = Math.round((r.awayWinProb || 0.25) * 100);
+    const drawPct = Math.round((r.drawProb || 0.25) * 100);
+
+    const langInstruction = (typeof I18n !== 'undefined') ? I18n.getPromptLangInstruction() : '请用中文回答。';
+
+    const h2hText = h2h.p > 0
+      ? `历史交锋${h2h.p}次（${homeZh}${h2h.homeWin}胜${h2h.draw}平${h2h.awayWin}负）`
+      : '无世界杯交锋记录';
+
+    let injuryHint = '';
+    if (intelligence && intelligence.home && intelligence.away) {
+      const hAvail = ((intelligence.home.availability||1.0)*100).toFixed(0);
+      const aAvail = ((intelligence.away.availability||1.0)*100).toFixed(0);
+      if (hAvail !== '100' || aAvail !== '100') {
+        injuryHint = `\n伤停：${homeZh}阵容完整度${hAvail}%，${awayZh}阵容完整度${aAvail}%`;
       }
-      throw err;
     }
+
+    return `${langInstruction}
+
+作为资深足球分析师，请预测2026世界杯：${homeZh} vs ${awayZh}
+
+关键数据：
+- FIFA排名：${homeZh}第${homeRank}位 / ${awayZh}第${awayRank}位
+- 攻防指数：${homeZh}攻${(ad.homeAttack||7).toFixed(1)}防${(ad.homeDefense||7).toFixed(1)} / ${awayZh}攻${(ad.awayAttack||7).toFixed(1)}防${(ad.awayDefense||7).toFixed(1)}
+- ${h2hText}
+- 统计预测胜率：主胜${homeWinPct}% 平${drawPct}% 客胜${awayWinPct}%
+- 核心球员：${homeZh} ${hs.starPlayer||'待定'} / ${awayZh} ${as.starPlayer||'待定'}
+- 风格：${hs.style||'未知'} vs ${as.style||'未知'}${injuryHint}
+
+请给出：1) 胜负判断 2) 预测比分 3) 2-3个关键分析点 4) 置信度（高/中/低）
+回答控制在200字内，直接给结论。`;
   },
 
-  // ── 调用 MiMo 分析（通过服务器代理）──
+  // ── analyze 直接返回 prompt ──
   async analyze(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence) {
-    let prompt;
     try {
-      prompt = this.buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence);
-    } catch(e) {
-      return { error: true, message: `Prompt 构建失败: ${e.message}` };
-    }
-
-    const systemPrompt = (typeof t !== 'undefined') ? t('ai.system.mimo') : '你是一位世界顶级足球分析师，精通数据分析和战术解读，拥有20年世界杯报道经验。请基于数据做出客观、专业且简洁的分析，控制在400字内。你是独立的AI分析师，请给出你自己的独立判断。';
-    const payload = {
-      model: 'mimo',
-      system: systemPrompt,
-      user: prompt,
-      max_tokens: 2000,
-      temperature: 0.7,
-    };
-
-    try {
-      const response = await this.fetchWithTimeout(this.baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }, 30000);
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        const errMsg = errData.error?.message || errData.message || `HTTP ${response.status}`;
-        if (response.status === 402 || errMsg.includes('balance') || errMsg.includes('quota')) {
-          return { error: true, message: 'MiMo API 余额不足', fallback: true };
-        }
-        return { error: true, message: `MiMo API 错误: ${errMsg}`, fallback: true };
-      }
-
-      const data = await response.json();
-
-      if (data.error && data.fallback) {
-        return { error: true, message: data.message || 'MiMo 服务不可用', fallback: true };
-      }
-
-      const content = data.content;
-
-      if (!content) {
-        return { error: true, message: 'MiMo 返回内容为空', fallback: true };
-      }
-
+      const prompt = this.buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence);
       return {
         error: false,
-        content,
-        tokens: data.tokens || 0,
-        model: data.model || 'mimo-v2.5-pro'
+        content: prompt,
+        isPrompt: true,
+        model: 'prompt-generator-lite'
       };
-
-    } catch (err) {
-      if (err.message === 'TIMEOUT') {
-        return { error: true, message: 'MiMo 请求超时（30秒）', fallback: true };
-      }
-      return { error: true, message: '服务器代理不可用，已切换到本地分析模式', fallback: true };
+    } catch(e) {
+      return { error: true, message: `Prompt 构建失败: ${e.message}` };
     }
   },
 

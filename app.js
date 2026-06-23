@@ -1963,10 +1963,15 @@ const App = {
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     const keyStatus = document.getElementById('dsKeyStatus');
 
-    // 密钥已在服务端，始终就绪
     DeepSeekEngine.loadApiKey();
-    const readyMsg = I18n.lang === 'zh' ? '✅ AI 分析引擎就绪（Claude Opus 4.7 + MiMo · 服务器代理 + 本地备用）' : I18n.lang === 'es' ? '✅ Motor de análisis IA listo (Claude Opus 4.7 + MiMo · Proxy + Local)' : I18n.lang === 'fr' ? '✅ Moteur IA prêt (Claude Opus 4.7 + MiMo · Proxy + Local)' : '✅ AI analysis engine ready (Claude Opus 4.7 + MiMo · Proxy + Local fallback)';
+    const readyMsg = I18n.lang === 'zh' ? '✅ AI 分析助手就绪 · 点击生成提示词，一键跳转AI平台' : I18n.lang === 'es' ? '✅ Asistente IA listo · Genera prompt y salta a plataforma IA' : I18n.lang === 'fr' ? '✅ Assistant IA prêt · Générez prompt et allez à plateforme IA' : '✅ AI assistant ready · Generate prompt and jump to AI platform';
     if (keyStatus) this._showKeyStatus(keyStatus, 'ok', readyMsg);
+
+    // 初始化AI平台跳转按钮
+    this._renderAIJumpButtons();
+
+    // 默认 prompt 类型
+    this._promptType = 'full';
 
     if (analyzeBtn) {
       analyzeBtn.addEventListener('click', async () => {
@@ -1993,7 +1998,8 @@ const App = {
 
   async _runDeepSeekAnalysis() {
     if (!this._currentPredResult) {
-      alert('请先选择今日比赛！');
+      const msg = I18n.lang === 'zh' ? '请先选择今日比赛！' : I18n.lang === 'es' ? '¡Selecciona un partido primero!' : I18n.lang === 'fr' ? 'Sélectionnez un match d\'abord !' : 'Please select a match first!';
+      alert(msg);
       return;
     }
 
@@ -2004,32 +2010,10 @@ const App = {
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     const btnContent = document.getElementById('dsAnalyzeBtnContent');
 
-    // 显示加载状态
+    // 短暂加载动画（Prompt 生成是同步的，给用户视觉反馈）
     analyzeBtn.disabled = true;
-    const loadingText = I18n.lang === 'zh' ? '🤖 双AI引擎并行分析中...' : I18n.lang === 'es' ? '🤖 Análisis paralelo de doble IA...' : I18n.lang === 'fr' ? '🤖 Analyse double IA en cours...' : '🤖 Dual AI engine analyzing...';
+    const loadingText = I18n.lang === 'zh' ? '✨ 正在生成提示词...' : I18n.lang === 'es' ? '✨ Generando prompt...' : I18n.lang === 'fr' ? '✨ Génération du prompt...' : '✨ Generating prompt...';
     btnContent.innerHTML = `<div class="ds-loading-dots"><span></span><span></span><span></span></div> ${loadingText}`;
-
-    const dsScoreEl = document.getElementById('dsAIScore');
-    const dsNoteEl = document.getElementById('dsAINote');
-    const mimoScoreEl = document.getElementById('mimoAIScore');
-    const mimoNoteEl = document.getElementById('mimoAINote');
-
-    if (dsScoreEl) dsScoreEl.textContent = '...';
-    if (dsNoteEl) dsNoteEl.textContent = t('dual.analyzing');
-    if (mimoScoreEl) mimoScoreEl.textContent = '...';
-    if (mimoNoteEl) mimoNoteEl.textContent = t('dual.analyzing');
-
-    const dsContent = document.getElementById('dsContent');
-    const mimoContent = document.getElementById('mimoContent');
-    const dualContainer = document.getElementById('dualResultContainer');
-
-    // 显示加载动画
-    if (dsContent) dsContent.innerHTML = `<div style="text-align:center;padding:20px;color:#a78bfa;">
-      <div class="ds-loading-dots" style="justify-content:center;margin-bottom:10px;"><span></span><span></span><span></span></div>
-      <div>🟣 Claude Opus 正在分析...</div></div>`;
-    if (mimoContent) mimoContent.innerHTML = `<div style="text-align:center;padding:20px;color:#fb923c;">
-      <div class="ds-loading-dots" style="justify-content:center;margin-bottom:10px;"><span></span><span></span><span></span></div>
-      <div>🟠 MiMo 正在分析...</div></div>`;
 
     // 获取赛前情报（伤停/阵容/新闻）
     let intelligence = null;
@@ -2041,90 +2025,128 @@ const App = {
       }
     }
 
-    // ── 双模型并行调用 ──
-    const [dsResult, mimoResult] = await Promise.allSettled([
-      this._callDeepSeek(pred, homeZh, awayZh, intelligence),
-      this._callMimo(pred, homeZh, awayZh, intelligence)
-    ]);
-
-    // ── 处理 DeepSeek 结果 ──
-    let dsData = dsResult.status === 'fulfilled' ? dsResult.value : null;
-    let dsUsedLocal = false;
-    if (!dsData || dsData.error) {
-      dsUsedLocal = true;
-      dsData = DeepSeekEngine.generateLocalAnalysis(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
+    // ── 生成 Prompt（无 API 调用）──
+    let promptText;
+    if (this._promptType === 'lite' && typeof MimoEngine !== 'undefined') {
+      promptText = MimoEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
+    } else {
+      promptText = DeepSeekEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
     }
-    if (dsContent) dsContent.innerHTML = DeepSeekEngine.formatResponse(dsData.content);
 
-    // 提取 DeepSeek 比分
-    const dsScore = this._extractScore(dsData.content);
-    if (dsScoreEl) dsScoreEl.textContent = dsScore || t('dual.seeReport');
-    if (dsNoteEl) dsNoteEl.textContent = dsUsedLocal ? t('dual.localEngine') : 'Claude Opus';
-    const dsTokenInfo = document.getElementById('dsTokenInfo');
-    if (dsTokenInfo) dsTokenInfo.textContent = dsUsedLocal ? t('dual.localAnalysis') : `${t('dual.tokens')} ${dsData.tokens || 0} tokens`;
+    // 显示 Prompt 区域
+    const promptArea = document.getElementById('promptResultArea');
+    const promptTextarea = document.getElementById('promptTextarea');
+    if (promptArea) promptArea.style.display = 'block';
+    if (promptTextarea) promptTextarea.value = promptText;
+    this._currentPrompt = promptText;
 
-    // ── 处理 MiMo 结果 ──
-    let mimoData = mimoResult.status === 'fulfilled' ? mimoResult.value : null;
-    let mimoUsedLocal = false;
-    if (!mimoData || mimoData.error) {
-      mimoUsedLocal = true;
-      mimoData = DeepSeekEngine.generateLocalAnalysis(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
-      // 给MiMo本地结果标注不同来源
-      if (mimoData.content) {
-        mimoData.content = mimoData.content.replace('五维度模型', '本地备用引擎');
-      }
-    }
-    if (mimoContent) mimoContent.innerHTML = MimoEngine.formatResponse(mimoData.content);
+    // 生成搜索关键词
+    this._renderKeywords(pred, homeZh, awayZh);
 
-    // 提取 MiMo 比分
-    const mimoScore = this._extractScore(mimoData.content);
-    if (mimoScoreEl) mimoScoreEl.textContent = mimoScore || t('dual.seeReport');
-    if (mimoNoteEl) mimoNoteEl.textContent = mimoUsedLocal ? t('dual.localEngine') : 'MiMo';
-    const mimoTokenInfo = document.getElementById('mimoTokenInfo');
-    if (mimoTokenInfo) mimoTokenInfo.textContent = mimoUsedLocal ? t('dual.localAnalysis') : `${t('dual.tokens')} ${mimoData.tokens || 0} tokens`;
-
-    // ── 综合研判 ──
-    this._renderConsensus(dsData, mimoData, dsScore, mimoScore, pred, homeZh, awayZh, dsUsedLocal, mimoUsedLocal);
+    // 生成本地统计分析作为参考
+    const localData = DeepSeekEngine.generateLocalAnalysis(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
+    const localSection = document.getElementById('localAnalysisSection');
+    const localContent = document.getElementById('localAnalysisContent');
+    if (localSection) localSection.style.display = 'block';
+    if (localContent) localContent.innerHTML = DeepSeekEngine.formatResponse(localData.content);
 
     // 更新按钮
     analyzeBtn.disabled = false;
-    btnContent.innerHTML = I18n.lang === 'zh' ? '🔄 刷新双模型对比分析' : I18n.lang === 'es' ? '🔄 Actualizar análisis doble' : I18n.lang === 'fr' ? '🔄 Rafraîchir l\'analyse double' : '🔄 Refresh Dual Model Analysis';
+    const refreshText = I18n.lang === 'zh' ? '🔄 重新生成提示词' : I18n.lang === 'es' ? '🔄 Regenerar prompt' : I18n.lang === 'fr' ? '🔄 Régénérer le prompt' : '🔄 Regenerate prompt';
+    btnContent.innerHTML = refreshText;
 
-    // 更新模型徽章
+    // 更新徽章
     const badge = document.getElementById('dsModelBadge');
     if (badge) {
-      const dsOk = !dsUsedLocal;
-      const mimoOk = !mimoUsedLocal;
-      if (dsOk && mimoOk) {
-        badge.textContent = t('dual.online');
-        badge.style.background = 'rgba(59,130,246,0.25)';
-      } else if (dsOk || mimoOk) {
-        badge.textContent = t('dual.partial');
-        badge.style.background = 'rgba(251,191,36,0.25)';
-      } else {
-        badge.textContent = t('dual.local');
-        badge.style.background = '#16a34a';
+      badge.textContent = t('dual.ready');
+      badge.style.background = 'rgba(34,197,94,0.25)';
+    }
+  },
+
+  // ── 切换 Prompt 类型 ──
+  _switchPromptType(type) {
+    this._promptType = type;
+    document.querySelectorAll('.prompt-type-btn').forEach(btn => btn.classList.remove('active'));
+    if (type === 'full') {
+      document.getElementById('promptTypeFull')?.classList.add('active');
+    } else {
+      document.getElementById('promptTypeLite')?.classList.add('active');
+    }
+    // 如果已有结果，重新生成
+    if (this._currentPredResult && document.getElementById('promptResultArea')?.style.display === 'block') {
+      this._runDeepSeekAnalysis();
+    }
+  },
+
+  // ── 渲染 AI 平台跳转按钮 ──
+  _renderAIJumpButtons() {
+    const container = document.getElementById('aiJumpButtons');
+    if (!container || typeof DeepSeekEngine === 'undefined') return;
+    const platforms = DeepSeekEngine.getAIPlatforms();
+    container.innerHTML = platforms.map(p => `
+      <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="ai-jump-btn" style="border-color:${p.color}40;" title="${p.name}">
+        <span class="ai-jump-icon">${p.icon}</span>
+        <span class="ai-jump-name">${p.name}</span>
+      </a>
+    `).join('');
+  },
+
+  // ── 复制 Prompt 到剪贴板 ──
+  async _copyPrompt() {
+    const text = this._currentPrompt || '';
+    if (!text) return;
+    const btn = document.getElementById('promptCopyBtn');
+    const originalText = btn?.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (btn) {
+        btn.textContent = I18n.lang === 'zh' ? '✅ 已复制' : I18n.lang === 'es' ? '✅ Copiado' : I18n.lang === 'fr' ? '✅ Copié' : '✅ Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      }
+    } catch(e) {
+      // 降级方案
+      const textarea = document.getElementById('promptTextarea');
+      if (textarea) {
+        textarea.select();
+        document.execCommand('copy');
+        if (btn) {
+          btn.textContent = '✅';
+          setTimeout(() => { btn.textContent = originalText; }, 2000);
+        }
       }
     }
   },
 
-  // ── 调用 DeepSeek ──
-  async _callDeepSeek(pred, homeZh, awayZh, intelligence) {
-    if (!DeepSeekEngine.isConfigured()) {
-      return { error: true, message: 'Claude API 未配置' };
+  // ── 复制单个关键词 ──
+  async _copyKeyword(text, btnEl) {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (btnEl) {
+        const orig = btnEl.textContent;
+        btnEl.textContent = '✅';
+        btnEl.classList.add('copied');
+        setTimeout(() => { btnEl.textContent = orig; btnEl.classList.remove('copied'); }, 1500);
+      }
+    } catch(e) {
+      // ignore
     }
-    return await DeepSeekEngine.analyze(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
   },
 
-  // ── 调用 MiMo ──
-  async _callMimo(pred, homeZh, awayZh, intelligence) {
-    if (typeof MimoEngine === 'undefined' || !MimoEngine.isConfigured()) {
-      return { error: true, message: 'MiMo API 未配置' };
-    }
-    return await MimoEngine.analyze(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
+  // ── 渲染搜索关键词 ──
+  _renderKeywords(pred, homeZh, awayZh) {
+    const container = document.getElementById('keywordsList');
+    if (!container) return;
+    const keywords = DeepSeekEngine.buildKeywords(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
+    container.innerHTML = keywords.map(k => `
+      <button class="keyword-chip" onclick="App._copyKeyword('${k.replace(/'/g, "\\'")}', this)">${k}</button>
+    `).join('');
   },
 
-  // ── 从AI结果中提取比分 ──
+  // ── 从AI结果中提取比分（保留用于本地分析）──
   _extractScore(content) {
     if (!content) return null;
     const regexes = [
@@ -2140,115 +2162,23 @@ const App = {
     return null;
   },
 
-  // ── 综合研判 ──
-  _renderConsensus(dsData, mimoData, dsScore, mimoScore, pred, homeZh, awayZh, dsUsedLocal, mimoUsedLocal) {
-    const panel = document.getElementById('consensusPanel');
-    const content = document.getElementById('consensusContent');
-    if (!panel || !content) return;
-
-    const hPct = Math.round((pred.homeWinProb || 0.5) * 100);
-    const dPct = Math.round((pred.drawProb || 0.25) * 100);
-    const aPct = Math.round((pred.awayWinProb || 0.25) * 100);
-
-    // 判断两个AI是否一致
-    const consistencyEl = document.getElementById('dualConsistency');
-    const consIcon = document.getElementById('consistencyIcon');
-    const consText = document.getElementById('consistencyText');
-
-    let consensusHtml = '';
-
-    if (dsScore && mimoScore && dsScore === mimoScore) {
-      // 完全一致
-      if (consistencyEl) { consistencyEl.style.display = 'flex'; }
-      if (consIcon) consIcon.textContent = '🤝';
-      if (consText) consText.textContent = t('dual.consistent');
-      const agreeText = I18n.lang === 'zh' ? '双模型预测一致' : I18n.lang === 'es' ? 'Ambos modelos coinciden' : I18n.lang === 'fr' ? 'Les deux modèles concordent' : 'Both models agree';
-      const agreeNote = I18n.lang === 'zh' ? '两个独立AI模型给出相同比分，预测可信度显著提升' : I18n.lang === 'es' ? 'Dos modelos de IA independientes dan el mismo marcador, la confiabilidad mejora significativamente' : I18n.lang === 'fr' ? 'Deux modèles IA indépendants donnent le même score, la fiabilité s\'améliore significativement' : 'Two independent AI models gave the same score, prediction reliability significantly improved';
-      consensusHtml = `<div class="consensus-agree">
-        <div class="consensus-agree-icon">🤝</div>
-        <div class="consensus-agree-text">${agreeText}：<strong>${dsScore}</strong></div>
-        <div class="consensus-agree-note">${agreeNote}</div>
-      </div>`;
-    } else if (dsScore && mimoScore) {
-      // 不一致
-      if (consistencyEl) { consistencyEl.style.display = 'flex'; }
-      if (consIcon) consIcon.textContent = '⚡';
-      if (consText) consText.textContent = t('dual.divergent');
-
-      // 判断方向是否一致（主胜/平/客胜）
-      const dsHome = parseInt(dsScore.split(':')[0]);
-      const dsAway = parseInt(dsScore.split(':')[1]);
-      const mimoHome = parseInt(mimoScore.split(':')[0]);
-      const mimoAway = parseInt(mimoScore.split(':')[1]);
-      const dsDirection = dsHome > dsAway ? 'home' : (dsHome < dsAway ? 'away' : 'draw');
-      const mimoDirection = mimoHome > mimoAway ? 'home' : (mimoHome < mimoAway ? 'away' : 'draw');
-
-      if (dsDirection === mimoDirection) {
-        const dirText = dsDirection === 'home' ? homeZh + (I18n.lang === 'zh' ? '胜' : ' Win') : (dsDirection === 'away' ? awayZh + (I18n.lang === 'zh' ? '胜' : ' Win') : (I18n.lang === 'zh' ? '平局' : 'Draw'));
-        const dirLabel = I18n.lang === 'zh' ? '方向一致' : I18n.lang === 'es' ? 'Dirección coincide' : I18n.lang === 'fr' ? 'Direction identique' : 'Direction agrees';
-        const detailText = I18n.lang === 'zh' ? `Claude预测 ${dsScore} / MiMo预测 ${mimoScore}，比分不同但方向一致` : I18n.lang === 'es' ? `Claude: ${dsScore} / MiMo: ${mimoScore}, marcadores diferentes pero misma dirección` : I18n.lang === 'fr' ? `Claude: ${dsScore} / MiMo: ${mimoScore}, scores différents mais même direction` : `Claude: ${dsScore} / MiMo: ${mimoScore}, different scores but same direction`;
-        consensusHtml = `<div class="consensus-partial">
-          <div class="consensus-partial-icon">✅</div>
-          <div class="consensus-partial-text">${dirLabel}：${dirText}</div>
-          <div class="consensus-partial-detail">${detailText}</div>
-        </div>`;
-      } else {
-        const disagreeText = I18n.lang === 'zh' ? '模型分歧' : I18n.lang === 'es' ? 'Modelos difieren' : I18n.lang === 'fr' ? 'Modèles divergent' : 'Models disagree';
-        const disagreeDetail = I18n.lang === 'zh' ? `两个模型预测方向不同，建议参考统计模型（主胜${hPct}% / 平${dPct}% / 客胜${aPct}%）综合判断` : I18n.lang === 'es' ? `Los modelos predicen direcciones diferentes, consulta el modelo estadístico (Local ${hPct}% / Empate ${dPct}% / Visitante ${aPct}%)` : I18n.lang === 'fr' ? `Les modèles prédisent des directions différentes, consultez le modèle statistique (Domicile ${hPct}% / Nul ${dPct}% / Extérieur ${aPct}%)` : `Models predict different directions, refer to statistical model (Home ${hPct}% / Draw ${dPct}% / Away ${aPct}%)`;
-        consensusHtml = `<div class="consensus-disagree">
-          <div class="consensus-disagree-icon">⚡</div>
-          <div class="consensus-disagree-text">${disagreeText}：Claude ${dsScore} vs MiMo ${mimoScore}</div>
-          <div class="consensus-disagree-detail">${disagreeDetail}</div>
-        </div>`;
-      }
-    } else {
-      // 至少一个没有比分
-      if (consistencyEl) { consistencyEl.style.display = 'none'; }
-      const noScoreText = I18n.lang === 'zh' ? '部分模型未返回有效比分，请参考各自分析报告' : I18n.lang === 'es' ? 'Algunos modelos no devolvieron marcador válido, consulta los informes individuales' : I18n.lang === 'fr' ? 'Certains modèles n\'ont pas retourné de score valide, consultez les rapports individuels' : 'Some models did not return valid scores, please refer to individual reports';
-      consensusHtml = `<div class="consensus-loading">
-        <div>${noScoreText}</div>
-      </div>`;
-    }
-
-    // 添加统计模型参考
-    consensusHtml += `<div class="consensus-stats-ref">
-      <div class="consensus-stats-title">📊 统计模型参考</div>
-      <div class="consensus-stats-row">
-        <span>${homeZh} 主胜 <strong>${hPct}%</strong></span>
-        <span>平局 <strong>${dPct}%</strong></span>
-        <span>${awayZh} 客胜 <strong>${aPct}%</strong></span>
-      </div>
-      <div class="consensus-stats-score">首选比分：${pred.primaryScore.home}:${pred.primaryScore.away}（${pred.primaryScore.pct}%）</div>
-    </div>`;
-
-    content.innerHTML = consensusHtml;
-    panel.style.display = 'block';
-  },
-
-  // ── Render + Auto AI Analysis (双模型) ──
+  // ── Render + Auto Generate Prompt ──
   renderPredictionResultAndDS(result, showLottery, weather, matchInfo) {
     this._currentPredResult = result;
     this.renderPredictionResult(result, showLottery, weather, matchInfo);
 
-    // Reset 双模型面板
-    const dsContent = document.getElementById('dsContent');
-    const mimoContent = document.getElementById('mimoContent');
+    // Reset Prompt 面板
+    const promptArea = document.getElementById('promptResultArea');
+    const localSection = document.getElementById('localAnalysisSection');
     const btnContent = document.getElementById('dsAnalyzeBtnContent');
-    const consensusPanel = document.getElementById('consensusPanel');
-    if (dsContent) dsContent.innerHTML = '';
-    if (mimoContent) mimoContent.innerHTML = '';
-    if (btnContent) btnContent.innerHTML = '🔄 双模型对比分析';
-    if (consensusPanel) consensusPanel.style.display = 'none';
-
-    const dsScoreEl = document.getElementById('dsAIScore');
-    const mimoScoreEl = document.getElementById('mimoAIScore');
-    if (dsScoreEl) dsScoreEl.textContent = '-';
-    if (mimoScoreEl) mimoScoreEl.textContent = '-';
+    if (promptArea) promptArea.style.display = 'none';
+    if (localSection) localSection.style.display = 'none';
+    if (btnContent) btnContent.innerHTML = I18n.lang === 'zh' ? '✨ 生成AI分析提示词' : I18n.lang === 'es' ? '✨ Generar prompt IA' : I18n.lang === 'fr' ? '✨ Générer prompt IA' : '✨ Generate AI prompt';
 
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     if (analyzeBtn) analyzeBtn.disabled = false;
 
-    // 始终自动触发双模型分析
+    // 自动生成 Prompt
     setTimeout(() => {
       const btn = document.getElementById('dsAnalyzeBtn');
       if (btn && !btn.disabled) this._runDeepSeekAnalysis();

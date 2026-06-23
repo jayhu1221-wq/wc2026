@@ -2495,6 +2495,129 @@ body {
 }
 .ds-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(124,58,237,0.6); background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 .ds-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── Prompt 类型切换 ── */
+.prompt-type-switcher {
+  display: flex; gap: 8px; margin: 12px 0;
+}
+.prompt-type-btn {
+  flex: 1; padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; color: #cbd5e1;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.25s;
+}
+.prompt-type-btn:hover { background: rgba(124,58,237,0.2); border-color: rgba(124,58,237,0.5); }
+.prompt-type-btn.active {
+  background: rgba(124,58,237,0.3);
+  border-color: #7c3aed;
+  color: #c4b5fd;
+  box-shadow: 0 2px 10px rgba(124,58,237,0.3);
+}
+
+/* ── Prompt 结果区 ── */
+.prompt-result-area {
+  margin-top: 16px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 12px;
+  padding: 18px;
+  animation: fadeIn 0.4s ease;
+}
+.prompt-result-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.prompt-result-title {
+  font-size: 14px; font-weight: 700; color: #4ade80;
+}
+.prompt-copy-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none; border-radius: 8px; color: white;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all 0.25s; box-shadow: 0 2px 10px rgba(34,197,94,0.4);
+}
+.prompt-copy-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(34,197,94,0.6); }
+.prompt-copy-btn.copied { background: linear-gradient(135deg, #16a34a, #15803d); }
+.prompt-textarea {
+  width: 100%; min-height: 200px; max-height: 400px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 14px;
+  color: #e2e8f0; font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 12px; line-height: 1.6;
+  resize: vertical; outline: none;
+}
+.prompt-textarea:focus { border-color: rgba(34,197,94,0.5); }
+.prompt-textarea::-webkit-scrollbar { width: 8px; }
+.prompt-textarea::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+.prompt-textarea::-webkit-scrollbar-thumb { background: rgba(34,197,94,0.4); border-radius: 4px; }
+
+/* ── AI 平台跳转区 ── */
+.ai-jump-section { margin-top: 16px; }
+.ai-jump-title {
+  font-size: 13px; font-weight: 700; color: #a78bfa;
+  margin-bottom: 10px;
+}
+.ai-jump-buttons {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.ai-jump-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #e2e8f0; text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  transition: all 0.25s; cursor: pointer;
+}
+.ai-jump-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.ai-jump-icon { font-size: 16px; }
+
+/* ── 关键词区 ── */
+.keywords-section { margin-top: 16px; }
+.keywords-title {
+  font-size: 13px; font-weight: 700; color: #fbbf24;
+  margin-bottom: 10px;
+}
+.keywords-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.keyword-chip {
+  padding: 5px 12px;
+  background: rgba(251,191,36,0.1);
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 20px;
+  color: #fbbf24; font-size: 12px;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.keyword-chip:hover { background: rgba(251,191,36,0.25); transform: translateY(-1px); }
+.keyword-chip.copied { background: rgba(34,197,94,0.25); border-color: rgba(34,197,94,0.5); color: #4ade80; }
+
+/* ── 本地分析参考 ── */
+.local-analysis-section {
+  margin-top: 16px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(96,165,250,0.2);
+  border-radius: 10px; padding: 16px;
+}
+.local-analysis-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid rgba(96,165,250,0.15);
+}
+.local-analysis-icon { font-size: 18px; }
+.local-analysis-title {
+  font-size: 14px; font-weight: 700; color: #60a5fa;
+}
 .ds-result { margin-top: 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(124,58,237,0.3); border-radius: 10px; padding: 18px; display: none; }
 .ds-result.visible { display: block; animation: fadeIn 0.4s ease; }
 .ds-result-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(124,58,237,0.2); }

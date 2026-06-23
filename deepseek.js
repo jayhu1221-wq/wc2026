@@ -1,34 +1,67 @@
 // ============================================
-// deepseek.js — AI 分析引擎 v3
-// 改为通过服务器代理调用 Claude Opus 4.7 (OpenRouter)
-// 所有 API 密钥仅在服务端 server.js 中，客户端不可见
-// 保留 DeepSeekEngine 对象名以兼容 app.js 调用
+// deepseek.js — AI 分析提示词生成器 v4
+// 不再调用任何外部 API，改为：
+// 1. 根据比赛数据自动生成专业分析 Prompt
+// 2. 提供一键跳转主流对话AI平台的快捷入口
+// 3. 用户自行复制 Prompt 到 AI 平台获取分析
+// 4. 保留本地统计分析引擎作为参考
+// 保留 DeepSeekEngine 对象名以兼容 app.js
 // ============================================
 
 const DeepSeekEngine = {
 
-  // 密钥已移至服务端，客户端无需配置
   apiKey: '',
-  model: 'claude-opus-4.7',
-  baseUrl: '/api/ai-analysis',  // 服务器代理端点
+  model: 'prompt-generator',
+  baseUrl: '',
 
-  // 兼容旧代码：始终返回 true（密钥在服务端）
-  setApiKey(key) {
-    // No-op: 密钥在服务端
+  // 兼容旧代码
+  setApiKey(key) { },
+  loadApiKey() { this.apiKey = 'prompt-mode'; return this.apiKey; },
+  isConfigured() { return true; },
+
+  // ── 主流对话AI平台列表 ──
+  getAIPlatforms() {
+    return [
+      { id: 'chatgpt',  name: 'ChatGPT',     icon: '🟢', url: 'https://chat.openai.com/',                    color: '#10a37f' },
+      { id: 'claude',   name: 'Claude',      icon: '🟣', url: 'https://claude.ai/new-chat',                 color: '#7c3aed' },
+      { id: 'deepseek', name: 'DeepSeek',    icon: '🔵', url: 'https://chat.deepseek.com/',                  color: '#4f8df7' },
+      { id: 'kimi',     name: 'Kimi',        icon: '🟠', url: 'https://kimi.moonshot.cn/',                   color: '#ff6b35' },
+      { id: 'gemini',   name: 'Gemini',      icon: '💎', url: 'https://gemini.google.com/app',               color: '#4285f4' },
+      { id: 'qwen',     name: '通义千问',     icon: '🟡', url: 'https://tongyi.aliyun.com/qianwen/',          color: '#615ced' },
+      { id: 'wenxin',   name: '文心一言',     icon: '🔴', url: 'https://yiyan.baidu.com/',                    color: '#2932e1' },
+      { id: 'doubao',   name: '豆包',         icon: '🟤', url: 'https://www.doubao.com/chat/',                color: '#3d5afe' },
+    ];
   },
 
-  loadApiKey() {
-    // No-op: 密钥在服务端，返回标记表示已就绪
-    this.apiKey = 'server-proxy';
-    return this.apiKey;
+  // ── 生成简短搜索关键词（供快速搜索用）──
+  buildKeywords(homeTeam, awayTeam, predResult, homeZh, awayZh) {
+    const r = predResult;
+    const hs = r.homeStats || {};
+    const as = r.awayStats || {};
+    const comp = r.components || {};
+    const h2h = comp.h2h || {};
+    const ad = comp.attackDefense || {};
+
+    const homeRank = r.homeRank ? r.homeRank.rank : '?';
+    const awayRank = r.awayRank ? r.awayRank.rank : '?';
+
+    return [
+      `${homeZh} vs ${awayZh} 2026世界杯`,
+      `${homeTeam} vs ${awayTeam} World Cup 2026 prediction`,
+      `${homeZh} FIFA排名${homeRank} ${awayZh} FIFA排名${awayRank}`,
+      `${homeZh} ${hs.style || ''} 战术分析`,
+      `${awayZh} ${as.style || ''} 阵容实力`,
+      `${homeZh} ${hs.starPlayer || '核心球员'} 状态`,
+      `${awayZh} ${as.starPlayer || '核心球员'} 表现`,
+      h2h.p > 0 ? `${homeZh} ${awayZh} 历史交锋记录` : `${homeZh} ${awayZh} 首次世界杯交锋`,
+      `${homeZh} 进攻${(ad.homeAttack||7).toFixed(1)} 防守${(ad.homeDefense||7).toFixed(1)}`,
+      `${awayZh} 进攻${(ad.awayAttack||7).toFixed(1)} 防守${(ad.awayDefense||7).toFixed(1)}`,
+      `2026世界杯 ${homeZh}小组出线概率`,
+      `${homeZh} vs ${awayZh} 比分预测 赔率分析`,
+    ].filter(k => k && !k.includes('  '));
   },
 
-  isConfigured() {
-    // 始终 true：服务器代理处理密钥
-    return true;
-  },
-
-  // ── Build a rich prompt from match data ──
+  // ── 生成完整的专业分析 Prompt ──
   buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence) {
     const r = predResult;
     const hR = r.homeRank ? `FIFA排名第${r.homeRank.rank}位(${r.homeRank.pts}分)` : '排名未知';
@@ -91,7 +124,11 @@ ${inj.detail ? `- 模型评估：${inj.detail}` : ''}`;
       adjNote += `\n注意：${awayZh}攻防评分已根据伤停情报调整（原始：进攻${as._originalAttack?.toFixed(1)} / 防守${as._originalDefense?.toFixed(1)} → 调整后：进攻${as.attack?.toFixed(1)} / 防守${as.defense?.toFixed(1)}）`;
     }
 
-    const prompt = `你是一位世界顶级足球分析师，请基于以下详细数据对2026年FIFA世界杯比赛进行专业分析和比分预测。${adjNote}
+    const langInstruction = (typeof I18n !== 'undefined') ? I18n.getPromptLangInstruction() : '请用中文回答。';
+
+    const prompt = `${langInstruction}
+
+你是一位世界顶级足球分析师，请基于以下详细数据对2026年FIFA世界杯比赛进行专业分析和比分预测。${adjNote}
 
 ## 对阵信息
 - 主队：${homeZh}（${homeTeam}）—— ${hR}
@@ -137,92 +174,27 @@ ${injurySection}
 5. **比分预测**：给出你认为最可能的比分（格式：X:Y）以及你预测主队胜/平/客队胜
 6. **置信度说明**（约40字）：你对预测的把握程度及主要不确定因素
 
-回答请使用中文，语言专业简洁，像真正的足球评论员风格。伤停分析必须放在最突出的位置！`;
+回答请使用专业简洁的语言，像真正的足球评论员风格。伤停分析必须放在最突出的位置！`;
 
     return prompt;
   },
 
-  // ── 带超时的 fetch ──
-  async fetchWithTimeout(url, options, timeoutMs = 30000) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        throw new Error('TIMEOUT');
-      }
-      throw err;
-    }
-  },
-
-  // ── 调用 AI 分析（通过服务器代理）──
+  // ── analyze 不再调用 API，直接返回 prompt ──
   async analyze(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence) {
-    let prompt;
     try {
-      prompt = this.buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence);
+      const prompt = this.buildPrompt(homeTeam, awayTeam, predResult, homeZh, awayZh, intelligence);
+      return {
+        error: false,
+        content: prompt,
+        isPrompt: true,
+        model: 'prompt-generator'
+      };
     } catch(e) {
       return { error: true, message: `Prompt 构建失败: ${e.message}` };
     }
-
-    const systemPrompt = (typeof t !== 'undefined') ? t('ai.system') : '你是一位世界顶级足球分析师，精通数据分析和战术解读，拥有20年世界杯报道经验。请基于数据做出客观、专业且简洁的分析，控制在400字内。';
-    const payload = {
-      model: 'claude',
-      system: systemPrompt,
-      user: prompt,
-      max_tokens: 800,
-      temperature: 0.7,
-    };
-
-    try {
-      const response = await this.fetchWithTimeout(this.baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }, 30000);
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        const errMsg = errData.error?.message || errData.message || `HTTP ${response.status}`;
-        if (response.status === 402 || errMsg.includes('balance') || errMsg.includes('quota')) {
-          return { error: true, message: 'AI API 余额不足，已切换到本地分析模式', fallback: true };
-        }
-        return { error: true, message: `AI API 错误: ${errMsg}`, fallback: true };
-      }
-
-      const data = await response.json();
-
-      // 如果服务端返回 fallback 标记
-      if (data.error && data.fallback) {
-        return { error: true, message: data.message || 'AI 服务不可用', fallback: true };
-      }
-
-      const content = data.content;
-
-      if (!content) {
-        return { error: true, message: 'AI 返回内容为空，请重试', fallback: true };
-      }
-
-      return {
-        error: false,
-        content,
-        tokens: data.tokens || 0,
-        model: data.model || 'claude-opus-4.7'
-      };
-
-    } catch (err) {
-      if (err.message === 'TIMEOUT') {
-        return { error: true, message: '请求超时（30秒），已切换到本地分析模式', fallback: true };
-      }
-      // 网络错误（如静态部署时无服务器代理）→ 降级到本地分析
-      return { error: true, message: '服务器代理不可用，已切换到本地分析模式', fallback: true };
-    }
   },
 
-  // ── 本地备用分析（API不可用时使用）──
+  // ── 本地统计分析（作为参考展示）──
   generateLocalAnalysis(homeTeam, awayTeam, predResult, homeZh, awayZh) {
     const r = predResult;
     const hs = r.homeStats || {};
@@ -241,8 +213,6 @@ ${injurySection}
     const ss = r.secondaryScore || { home: 1, away: 1 };
 
     const rankGap = (homeRank && awayRank) ? homeRank.rank - awayRank.rank : 0;
-    const attackGap = (ad.homeAttack - ad.awayAttack).toFixed(1);
-    const defGap = (ad.homeDefense - ad.awayDefense).toFixed(1);
 
     let overallJudge = '';
     if (Math.abs(rankGap) <= 5) {
@@ -263,6 +233,9 @@ ${injurySection}
       h2hText = `两队在世界杯正赛历史上从未交手，缺乏直接对话参考。`;
     }
 
+    const attackGap = (ad.homeAttack - ad.awayAttack).toFixed(1);
+    const defGap = (ad.homeDefense - ad.awayDefense).toFixed(1);
+
     let keyFactors = `进攻端：${homeZh}（${ad.homeAttack?.toFixed(1)}/10）${parseFloat(attackGap) > 0 ? '领先' : '落后'}${awayZh}（${ad.awayAttack?.toFixed(1)}/10）${Math.abs(parseFloat(attackGap)).toFixed(1)}分；
 防守端：${homeZh}（${ad.homeDefense?.toFixed(1)}/10）vs ${awayZh}（${ad.awayDefense?.toFixed(1)}/10），${parseFloat(defGap) > 0 ? homeZh + '防守更稳固' : awayZh + '防守更成熟'}。
 核心球员方面，${homeZh}倚仗 ${hs.starPlayer || '核心球员'}，${awayZh}则依靠 ${as.starPlayer || '核心球员'} 创造机会。`;
@@ -280,8 +253,6 @@ ${injurySection}
       confidence = `预测置信度偏低，两队实力非常接近，平局及任一队伍获胜均有可能，存在较大不确定性。`;
     }
 
-    const winner = hWinPct >= aWinPct ? homeZh : awayZh;
-    const winPct = Math.max(hWinPct, aWinPct);
     const resultText = hWinPct >= aWinPct
       ? `主队${homeZh}胜（概率${hWinPct}%）`
       : `客队${awayZh}胜（概率${aWinPct}%）`;
