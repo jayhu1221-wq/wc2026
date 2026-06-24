@@ -426,6 +426,10 @@ body {
   font-weight: 700;
   font-size: 13px;
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .today-vs {
@@ -1131,9 +1135,12 @@ body {
   text-overflow: ellipsis;
   min-width: 0;
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.match-away { text-align: right; }
+.match-away { text-align: right; flex-direction: row-reverse; justify-content: flex-end; }
 
 .match-score-block {
   font-size: 1.05rem;
@@ -1467,81 +1474,120 @@ body {
   border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
-/* ── Accuracy Summary Banner ── */
+/* ── Accuracy Summary Banner (独立全宽首行) ── */
+#accuracyBanner {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
 .accuracy-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(245, 158, 11, 0.06));
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 14px;
+  gap: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.08);
 }
 
 .accuracy-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  transition: all 0.3s;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+  border-right: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.accuracy-card:last-child {
+  border-right: none;
 }
 
 .accuracy-card:hover {
-  border-color: var(--accent-light);
-  transform: translateY(-1px);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .accuracy-icon {
-  font-size: 32px;
-  flex-shrink: 0;
-}
-
-.accuracy-content {
-  flex: 1;
-}
-
-.accuracy-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 2px;
-}
-
-.accuracy-value {
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  font-size: 36px;
+  margin-bottom: 8px;
   line-height: 1;
 }
 
-.accuracy-unit {
-  font-size: 1.1rem;
-  color: var(--text-muted);
+.accuracy-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.accuracy-label {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.accuracy-value {
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.accuracy-unit {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  font-weight: 700;
   margin-left: 2px;
 }
 
 .accuracy-sub {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
-  margin-top: 4px;
+  margin-top: 6px;
+  opacity: 0.85;
 }
 
-.accuracy-main .accuracy-value { color: var(--accent-light); }
+/* 各卡片主题色 */
+.accuracy-main { background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), transparent); }
+.accuracy-exact { background: linear-gradient(180deg, rgba(74, 222, 128, 0.10), transparent); }
+.accuracy-total { background: linear-gradient(180deg, rgba(250, 204, 21, 0.10), transparent); }
+
+.accuracy-main .accuracy-value { color: #60a5fa; }
 .accuracy-exact .accuracy-value { color: #4ade80; }
-.accuracy-total .accuracy-value { color: var(--gold-light); }
+.accuracy-total .accuracy-value { color: #facc15; }
 
 @media (max-width: 768px) {
   .accuracy-summary {
     grid-template-columns: 1fr;
+    border-radius: 12px;
   }
+  .accuracy-card {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    padding: 18px 12px;
+    flex-direction: row;
+    gap: 16px;
+    text-align: left;
+  }
+  .accuracy-card:last-child {
+    border-bottom: none;
+  }
+  .accuracy-icon {
+    font-size: 32px;
+    margin-bottom: 0;
+  }
+  .accuracy-content {
+    align-items: flex-start;
+  }
+  .accuracy-value {
+    font-size: 2rem;
+  }
+}
   .rc-pred-comparison {
     grid-template-columns: 1fr 1fr;
     gap: 4px;

@@ -2,9 +2,10 @@
 // app.js — UI Controller v3 (精简 + 天气 + 三重比分)
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
-  App.init();
-});
+// 全局翻译函数别名（i18n.js 中定义了 window.t，此处引用以确保作用域内可用）
+var _t = typeof window !== 'undefined' && typeof window.t === 'function'
+  ? window.t.bind(window)
+  : function(k){ return k; };
 
 const App = {
 
@@ -17,18 +18,6 @@ const App = {
     const bj = this._nowBJ();
     bj.setDate(bj.getDate() + 1);
     return `${bj.getMonth()+1}月${bj.getDate()}日`;
-  },
-  // 缓存避免重复计算
-  _todayDateCache: null,
-  _todayDateCacheTime: 0,
-  getTodayDateCached() {
-    const now = Date.now();
-    if (now - this._todayDateCacheTime > 60000) { // 每分钟刷新一次
-      const bj = this._nowBJ();
-      this._todayDateCache = `${bj.getMonth()+1}月${bj.getDate()}日`;
-      this._todayDateCacheTime = now;
-    }
-    return this._todayDateCache;
   },
   _currentPredResult: null,
   _refreshTimer: null,
@@ -87,8 +76,8 @@ const App = {
     const local = this._getLocalTime(bjTimeStr, venue);
     let bjLabel = `<span class="time-bj">🇨🇳 ${bjTimeStr}</span>`;
     if (!local) return bjLabel;
-    const dayMarker = local.dayOffset === -1 ? '<span class="time-day-offset">前日</span>'
-                    : local.dayOffset === 1 ? '<span class="time-day-offset">次日</span>' : '';
+    const dayMarker = local.dayOffset === -1 ? `<span class="time-day-offset">${_t('common.day.before')}</span>`
+                   : local.dayOffset === 1 ? `<span class="time-day-offset">${_t('common.day.after')}</span>` : '';
     const localLabel = `<span class="time-local">📍 ${local.localTime} ${local.country}</span>${dayMarker}`;
     return `<span class="dual-time">${bjLabel}<span class="time-sep">|</span>${localLabel}</span>`;
   },
@@ -98,7 +87,7 @@ const App = {
     const local = this._getLocalTime(bjTimeStr, venue);
     let bjLabel = `🇨🇳${bjTimeStr}`;
     if (!local) return bjLabel;
-    const dayMarker = local.dayOffset === -1 ? '(前日)' : local.dayOffset === 1 ? '(次日)' : '';
+    const dayMarker = local.dayOffset === -1 ? `(${_t('common.day.before')})` : local.dayOffset === 1 ? `(${_t('common.day.after')})` : '';
     return `${bjLabel} | 📍${local.localTime} ${local.country}${dayMarker}`;
   },
 
@@ -122,7 +111,7 @@ const App = {
     if (!matchTime) return '';
     const now = this._nowBJ();
     const diffMs = matchTime.getTime() - now.getTime();
-    if (diffMs <= 0) return t('common.kickoff');
+    if (diffMs <= 0) return _t('common.kickoff');
 
     const diffH = Math.floor(diffMs / 3600000);
     const diffM = Math.floor((diffMs % 3600000) / 60000);
@@ -137,22 +126,38 @@ const App = {
     if (diffM > 0) {
       return lang === 'zh' ? `${diffM}分钟后` : lang === 'es' ? `En ${diffM} min` : lang === 'fr' ? `Dans ${diffM} min` : `In ${diffM} min`;
     }
-    return t('common.kickoff');
+    return _t('common.kickoff');
   },
 
   async init() {
+    // 1. 导航标签绑定（必须在 DOM 就绪后调用）
     this.initNav();
-    // 先初始化实时数据层，等待数据同步完成后再渲染
-    if (typeof LiveData !== 'undefined') {
-      await LiveData.init();
+
+    // 2. 初始化实时数据层（失败不影响后续渲染）
+    try {
+      if (typeof LiveData !== 'undefined') {
+        await LiveData.init();
+      }
+    } catch(e) {
+      console.warn('[App.init] LiveData.init failed:', e.message);
     }
-    // 数据就绪后再渲染所有模块
-    this.renderTodayMatches();
-    this.renderSchedule();
-    this.renderResults();
-    this.renderGroups();
-    this.renderBracket();
-    this.renderTeamsPower();
+
+    // 3. 渲染所有模块（每个独立 try/catch，互不阻塞）
+    const renderFns = [
+      ['renderTodayMatches', () => this.renderTodayMatches()],
+      ['renderSchedule',      () => this.renderSchedule()],
+      ['renderResults',       () => this.renderResults()],
+      ['renderGroups',        () => this.renderGroups()],
+      ['renderBracket',      () => this.renderBracket()],
+      ['renderTeamsPower',    () => this.renderTeamsPower()],
+    ];
+    renderFns.forEach(([name, fn]) => {
+      try { fn(); } catch(e) {
+        console.error('[App.init] ' + name + ' ERROR:', e.message, e.stack);
+      }
+    });
+
+    // 4. 初始化交互
     this.initFilters();
     this.initDeepSeek();
     this.initTeamSearch();
@@ -162,8 +167,9 @@ const App = {
     this._initDayChangeDetector();
     this._initDataFreshnessIndicator();
 
-    // 监听语言切换事件，切换后重新渲染所有动态内容
-    document.addEventListener('langchange', () => {
+    // 5. 监听语言切换事件（先移除旧监听，防止重复绑定）
+    document.removeEventListener('langchange', this._langChangeHandler);
+    this._langChangeHandler = () => {
       this.renderTodayMatches();
       this.renderSchedule();
       this.renderResults();
@@ -171,7 +177,21 @@ const App = {
       this.renderBracket();
       this.renderTeamsPower();
       this.initDeepSeek();
-    });
+    };
+    document.addEventListener('langchange', this._langChangeHandler);
+  },
+
+  // ── 安全初始化导航：确保 DOM 就绪 ──
+  _safeInitNav() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    if (tabs.length > 0) {
+      this.initNav();
+    } else if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.initNav(), { once: true });
+    } else {
+      // DOM 已就绪但 nav-tab 仍未出现，稍后重试
+      setTimeout(() => this._safeInitNav(), 100);
+    }
   },
 
   // ── Helper: Get localized group label (e.g., "A组" / "Group A" / "Grupo A" / "Groupe A") ──
@@ -199,9 +219,18 @@ const App = {
     return WC2026_DATA.teamZhName[en] || en;
   },
 
-  // ── Helper: Get team emoji ──
-  emoji(en) {
-    return WC2026_DATA.teamEmoji[en] || '🏴';
+  // ── Helper: Get team flag (img → emoji fallback) ──
+  emoji(en, size) {
+    const iso = WC2026_DATA.teamISO && WC2026_DATA.teamISO[en];
+    const fallbackEmoji = WC2026_DATA.teamEmoji[en] || '🏴';
+    if (iso) {
+      const h = size || 24;
+      var w = Math.round(h * 1.33);
+      // 图片加载失败时回退为 emoji（通过 data-emoji 属性传递回退字符）
+      var fe = fallbackEmoji.replace(/'/g, "\\'");
+      return '<img src="https://flagcdn.com/' + iso + '.svg" width="' + w + '" height="' + h + '" alt="' + en + '" data-fe="' + fe + '" style="border-radius:2px;vertical-align:middle;display:inline-block;" onerror="var s=document.createElement(\'span\');s.textContent=this.getAttribute(\'data-fe\');s.style.fontSize=\''+h+'px\';s.style.verticalAlign=\'middle\';this.replaceWith(s)">';
+    }
+    return fallbackEmoji;
   },
 
   // ── Auto Refresh ──
@@ -266,13 +295,19 @@ const App = {
   initNav() {
     document.querySelectorAll('.nav-tab').forEach(btn => {
       btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
-        document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${tab}`).classList.add('active');
+        this.switchTab(btn.dataset.tab);
       });
     });
+  },
+
+  // ── 切换标签页（供 initNav 和 HTML onclick 双重调用）──
+  switchTab(tab) {
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const activeBtn = document.querySelector(`.nav-tab[data-tab="${tab}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+    const activeSection = document.getElementById(`tab-${tab}`);
+    if (activeSection) activeSection.classList.add('active');
   },
 
   // ── Get today's matches ──
@@ -308,9 +343,9 @@ const App = {
     // ====== 今日区域标题 ======
     html += `<div class="day-section-header today-section">
       <span class="day-section-icon">📅</span>
-      <span class="day-section-title">今日比赛</span>
+      <span class="day-section-title">${_t('today.matches')}</span>
       <span class="day-section-badge">${this.todayDate}</span>
-      <span class="day-section-count">${todayCompleted.length + todayUpcoming.length} 场</span>
+      <span class="day-section-count">${todayCompleted.length + todayUpcoming.length} ${_t('today.match.unit')}</span>
     </div>`;
 
     // 已完成的比赛
@@ -322,13 +357,13 @@ const App = {
       const dualTime = this._formatDualTime(r.time, r.venue);
       html += `
         <div class="today-match-card completed-today">
-          <div class="today-match-group">🏆 ${r.group}组 · ${dualTime} · <span style="color:#9ca3af;font-size:10px;">📍 ${r.venue}</span></div>
+          <div class="today-match-group">🏆 ${this.groupLabel(r.group)} · ${dualTime} · <span style="color:#9ca3af;font-size:10px;">📍 ${this.venueName(r.venue)}</span></div>
           <div class="today-match-teams">
             <span class="today-team">${hE} ${hZh}</span>
             <span class="today-vs-score" style="color:#22c55e;font-weight:900;">${r.hg} - ${r.ag}</span>
             <span class="today-team">${aZh} ${aE}</span>
           </div>
-          <div class="today-match-status-ft">✅ 终场</div>
+          <div class="today-match-status-ft">${_t('match.ft')}</div>
         </div>`;
     });
 
@@ -355,9 +390,9 @@ const App = {
         const liveHg = m.liveScore?.hg ?? '-';
         const liveAg = m.liveScore?.ag ?? '-';
         const liveMin = m.liveScore?.min ?? "🔴";
-        statusHtml = `<div class="today-match-live">🔴 进行中 · ${liveMin}</div><div class="live-score-display" style="text-align:center;font-size:24px;font-weight:900;color:#ef4444;margin:4px 0;">${liveHg} - ${liveAg}</div>`;
+        statusHtml = `<div class="today-match-live">${_t('match.live')} · ${liveMin}</div><div class="live-score-display" style="text-align:center;font-size:24px;font-weight:900;color:#ef4444;margin:4px 0;">${liveHg} - ${liveAg}</div>`;
       } else if (matchStatus === 'likely_completed') {
-        statusHtml = '<div class="today-match-live" style="color:#f97316;">⏳ 预计已结束 · 等待比分确认</div>';
+        statusHtml = `<div class="today-match-live" style="color:#f97316;">${_t('match.likely.completed')}</div>`;
       } else {
         const dualTime = this._formatDualTime(m.time, m.venue);
         statusHtml = `<div class="today-match-countdown">${dualTime} · ${countdown}</div>`;
@@ -373,22 +408,22 @@ const App = {
           </div>
           ${!m.liveScore && !pred.error ? `
             <div class="match-three-scores">
-              <div class="score-tag primary" title="首选比分">🥇 ${pred.primaryScore.home}:${pred.primaryScore.away} <span class="pct">${pred.primaryScore.pct}%</span></div>
-              <div class="score-tag secondary" title="次选比分">🥈 ${pred.secondaryScore.home}:${pred.secondaryScore.away} <span class="pct">${pred.secondaryScore.pct}%</span></div>
-              <div class="score-tag defensive" title="防冷比分">🎯 ${pred.defensiveScore.home}:${pred.defensiveScore.away} <span class="pct">${pred.defensiveScore.pct}%</span></div>
+              <div class="score-tag primary" title="${_t('pred.score.primary')}">🥇 ${pred.primaryScore.home}:${pred.primaryScore.away} <span class="pct">${pred.primaryScore.pct}%</span></div>
+              <div class="score-tag secondary" title="${_t('pred.score.secondary')}">🥈 ${pred.secondaryScore.home}:${pred.secondaryScore.away} <span class="pct">${pred.secondaryScore.pct}%</span></div>
+              <div class="score-tag defensive" title="${_t('pred.score.defensive')}">🎯 ${pred.defensiveScore.home}:${pred.defensiveScore.away} <span class="pct">${pred.defensiveScore.pct}%</span></div>
             </div>
             <div class="today-probs">
-              <span class="prob-chip home">主胜 ${Math.round(pred.homeWinProb*100)}%</span>
-              <span class="prob-chip draw">平 ${Math.round(pred.drawProb*100)}%</span>
-              <span class="prob-chip away">客胜 ${Math.round(pred.awayWinProb*100)}%</span>
+              <span class="prob-chip home">${_t('prob.home.win')} ${Math.round(pred.homeWinProb*100)}%</span>
+              <span class="prob-chip draw">${_t('prob.draw.short')} ${Math.round(pred.drawProb*100)}%</span>
+              <span class="prob-chip away">${_t('prob.away.win')} ${Math.round(pred.awayWinProb*100)}%</span>
             </div>
           ` : ''}
           ${statusHtml}
           <div id="weather-card-today-${i}" class="weather-mini">
-            <span class="weather-loading">⏳ 获取天气...</span>
+            <span class="weather-loading">${_t('weather.loading')}</span>
           </div>
           <button class="today-match-predict-btn" onclick="event.stopPropagation(); App.showDayPrediction('today',${i})">
-            📊 ${I18n.lang === 'zh' ? '查看完整AI分析' : I18n.lang === 'es' ? 'Ver análisis IA completo' : I18n.lang === 'fr' ? 'Voir l\'analyse IA complète' : 'View Full AI Analysis'}
+            📊 ${_t('today.view.ai')}
           </button>
         </div>
       `;
@@ -400,9 +435,9 @@ const App = {
 
     html += `<div class="day-section-header tomorrow-section">
       <span class="day-section-icon">📆</span>
-      <span class="day-section-title">明日比赛</span>
+      <span class="day-section-title">${_t('today.tomorrow')}</span>
       <span class="day-section-badge tomorrow">${this.tomorrowDate}</span>
-      <span class="day-section-count">${tomorrowCompleted.length + tomorrowUpcoming.length} 场</span>
+      <span class="day-section-count">${tomorrowCompleted.length + tomorrowUpcoming.length} ${_t('today.match.unit')}</span>
     </div>`;
 
     // 明日已完赛（罕见但支持）
@@ -414,13 +449,13 @@ const App = {
       const dualTime = this._formatDualTime(r.time, r.venue);
       html += `
         <div class="today-match-card completed-today">
-          <div class="today-match-group">🏆 ${r.group}组 · ${dualTime} · <span style="color:#9ca3af;font-size:10px;">📍 ${r.venue}</span></div>
+          <div class="today-match-group">🏆 ${this.groupLabel(r.group)} · ${dualTime} · <span style="color:#9ca3af;font-size:10px;">📍 ${this.venueName(r.venue)}</span></div>
           <div class="today-match-teams">
             <span class="today-team">${hE} ${hZh}</span>
             <span class="today-vs-score" style="color:#22c55e;font-weight:900;">${r.hg} - ${r.ag}</span>
             <span class="today-team">${aZh} ${aE}</span>
           </div>
-          <div class="today-match-status-ft">✅ 终场</div>
+          <div class="today-match-status-ft">${_t('match.ft')}</div>
         </div>`;
     });
 
@@ -446,7 +481,7 @@ const App = {
         const liveHg = m.liveScore?.hg ?? '-';
         const liveAg = m.liveScore?.ag ?? '-';
         const liveMin = m.liveScore?.min ?? "🔴";
-        statusHtml = `<div class="today-match-live">🔴 进行中 · ${liveMin}</div><div class="live-score-display" style="text-align:center;font-size:24px;font-weight:900;color:#ef4444;margin:4px 0;">${liveHg} - ${liveAg}</div>`;
+        statusHtml = `<div class="today-match-live">${_t('match.live')} · ${liveMin}</div><div class="live-score-display" style="text-align:center;font-size:24px;font-weight:900;color:#ef4444;margin:4px 0;">${liveHg} - ${liveAg}</div>`;
       } else {
         const dualTime = this._formatDualTime(m.time, m.venue);
         statusHtml = `<div class="today-match-countdown">${dualTime} · ${countdown}</div>`;
@@ -462,29 +497,29 @@ const App = {
           </div>
           ${!m.liveScore && !pred.error ? `
             <div class="match-three-scores">
-              <div class="score-tag primary" title="首选比分">🥇 ${pred.primaryScore.home}:${pred.primaryScore.away} <span class="pct">${pred.primaryScore.pct}%</span></div>
-              <div class="score-tag secondary" title="次选比分">🥈 ${pred.secondaryScore.home}:${pred.secondaryScore.away} <span class="pct">${pred.secondaryScore.pct}%</span></div>
-              <div class="score-tag defensive" title="防冷比分">🎯 ${pred.defensiveScore.home}:${pred.defensiveScore.away} <span class="pct">${pred.defensiveScore.pct}%</span></div>
+              <div class="score-tag primary" title="${_t('pred.score.primary')}">🥇 ${pred.primaryScore.home}:${pred.primaryScore.away} <span class="pct">${pred.primaryScore.pct}%</span></div>
+              <div class="score-tag secondary" title="${_t('pred.score.secondary')}">🥈 ${pred.secondaryScore.home}:${pred.secondaryScore.away} <span class="pct">${pred.secondaryScore.pct}%</span></div>
+              <div class="score-tag defensive" title="${_t('pred.score.defensive')}">🎯 ${pred.defensiveScore.home}:${pred.defensiveScore.away} <span class="pct">${pred.defensiveScore.pct}%</span></div>
             </div>
             <div class="today-probs">
-              <span class="prob-chip home">主胜 ${Math.round(pred.homeWinProb*100)}%</span>
-              <span class="prob-chip draw">平 ${Math.round(pred.drawProb*100)}%</span>
-              <span class="prob-chip away">客胜 ${Math.round(pred.awayWinProb*100)}%</span>
+              <span class="prob-chip home">${_t('prob.home.win')} ${Math.round(pred.homeWinProb*100)}%</span>
+              <span class="prob-chip draw">${_t('prob.draw.short')} ${Math.round(pred.drawProb*100)}%</span>
+              <span class="prob-chip away">${_t('prob.away.win')} ${Math.round(pred.awayWinProb*100)}%</span>
             </div>
           ` : ''}
           ${statusHtml}
           <div id="weather-card-tomorrow-${i}" class="weather-mini">
-            <span class="weather-loading">⏳ 获取天气...</span>
+            <span class="weather-loading">${_t('weather.loading')}</span>
           </div>
           <button class="today-match-predict-btn" onclick="event.stopPropagation(); App.showDayPrediction('tomorrow',${i})">
-            📊 查看完整AI分析
+            📊 ${_t('today.view.ai')}
           </button>
         </div>
       `;
     });
 
     if (todayCompleted.length + todayUpcoming.length + tomorrowCompleted.length + tomorrowUpcoming.length === 0) {
-      html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">今明两日暂无比赛安排</div>';
+      html = `<div style="text-align:center;padding:20px;color:var(--text-muted);">${_t('today.no.matches')}</div>`;
     }
 
     container.innerHTML = html;
@@ -512,11 +547,11 @@ const App = {
 
     el.innerHTML = `
       <span class="weather-icon">${weather.icon}</span>
-      <span class="weather-city">${weather.city}</span>
+      <span class="weather-city">${this.venueName(weather.city)}</span>
       <span class="weather-temp">${weather.temp}°C</span>
       <span class="weather-wind">💨${weather.wind}km/h</span>
       <span class="weather-desc">${weather.desc}</span>
-      ${weather.mock ? '<span class="weather-mock">估算</span>' : ''}
+      ${weather.mock ? `<span class="weather-mock">${_t('weather.estimated')}</span>` : ''}
     `;
     el.title = weather.impact;
   },
@@ -551,11 +586,6 @@ const App = {
     document.getElementById('predictionResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 
-  // ── Legacy compat ──
-  async showTodayPrediction(idx) {
-    return this.showDayPrediction('today', idx);
-  },
-
   // ── Render Prediction Result ──
   renderPredictionResult(result, showLottery, weather, matchInfo) {
     const el = document.getElementById('predictionResult');
@@ -575,24 +605,24 @@ const App = {
     const aE = this.emoji(awayTeam);
 
     // ─ Header ─
-    document.getElementById('resultHomeFlag').textContent = hE;
+    document.getElementById('resultHomeFlag').innerHTML = hE;
     document.getElementById('resultHomeName').textContent = hZh;
-    document.getElementById('resultHomeRank').textContent = homeRank ? `FIFA 排名 #${homeRank.rank}` : '';
-    document.getElementById('resultAwayFlag').textContent = aE;
+    document.getElementById('resultHomeRank').textContent = homeRank ? `${_t('pred.fifa.rank')}${homeRank.rank}` : '';
+    document.getElementById('resultAwayFlag').innerHTML = aE;
     document.getElementById('resultAwayName').textContent = aZh;
-    document.getElementById('resultAwayRank').textContent = awayRank ? `FIFA 排名 #${awayRank.rank}` : '';
+    document.getElementById('resultAwayRank').textContent = awayRank ? `${_t('pred.fifa.rank')}${awayRank.rank}` : '';
 
     // ─ Weather strip ─
     const weatherEl = document.getElementById('matchWeatherStrip');
     if (weatherEl && weather && !weather.error) {
       weatherEl.innerHTML = `
         <div class="weather-strip">
-          <span>${weather.icon} <strong>${weather.city}</strong></span>
-          <span>🌡️ ${weather.temp}°C（体感 ${weather.feelsLike}°C）</span>
-          <span>💧 湿度 ${weather.humidity}%</span>
-          <span>💨 风速 ${weather.wind} km/h</span>
+          <span>${weather.icon} <strong>${this.venueName(weather.city)}</strong></span>
+          <span>🌡️ ${weather.temp}°C（${_t('weather.feels')} ${weather.feelsLike}°C）</span>
+          <span>💧 ${_t('weather.humidity')} ${weather.humidity}%</span>
+          <span>💨 ${_t('weather.wind')} ${weather.wind} km/h</span>
           <span class="weather-impact">${weather.impact}</span>
-          ${weather.mock ? '<span style="opacity:.5;font-size:10px;">（估算）</span>' : ''}
+          ${weather.mock ? `<span style="opacity:.5;font-size:10px;">（${_t('weather.estimated')}）</span>` : ''}
         </div>
       `;
       weatherEl.style.display = 'block';
@@ -606,22 +636,22 @@ const App = {
       threeScoresEl.innerHTML = `
         <div class="three-scores-grid">
           <div class="ts-card primary-card">
-            <div class="ts-label">🥇 首选比分</div>
+            <div class="ts-label">${_t('pred.score.primary')}</div>
             <div class="ts-score">${primaryScore.home} : ${primaryScore.away}</div>
-            <div class="ts-pct">概率 ${primaryScore.pct}%</div>
-            <div class="ts-note">最高概率方案</div>
+            <div class="ts-pct">${_t('pred.probability')} ${primaryScore.pct}%</div>
+            <div class="ts-note">${_t('pred.best.pick')}</div>
           </div>
           <div class="ts-card secondary-card">
-            <div class="ts-label">🥈 次选比分</div>
+            <div class="ts-label">${_t('pred.score.secondary')}</div>
             <div class="ts-score">${secondaryScore.home} : ${secondaryScore.away}</div>
-            <div class="ts-pct">概率 ${secondaryScore.pct}%</div>
-            <div class="ts-note">第二可能方案</div>
+            <div class="ts-pct">${_t('pred.probability')} ${secondaryScore.pct}%</div>
+            <div class="ts-note">${_t('pred.second.pick')}</div>
           </div>
           <div class="ts-card defensive-card">
-            <div class="ts-label">🎯 防冷比分</div>
+            <div class="ts-label">${_t('pred.score.defensive')}</div>
             <div class="ts-score">${defensiveScore.home} : ${defensiveScore.away}</div>
-            <div class="ts-pct">概率 ${defensiveScore.pct}%</div>
-            <div class="ts-note">高赔冷门方案</div>
+            <div class="ts-pct">${_t('pred.probability')} ${defensiveScore.pct}%</div>
+            <div class="ts-note">${_t('pred.upset.pick')}</div>
           </div>
         </div>
       `;
@@ -664,10 +694,10 @@ const App = {
           <div class="h-loss" style="width:${lossPct}%"></div>
         </div>
         <div style="font-size:11px; color:var(--text-dim); display:flex; justify-content:space-between;">
-          <span>${hZh} ${winPct}%</span><span>平局 ${drawPctH}%</span><span>${aZh} ${lossPct}%</span>
+          <span>${hZh} ${winPct}%</span><span>${_t('pred.draw.label')} ${drawPctH}%</span><span>${aZh} ${lossPct}%</span>
         </div>`;
     } else {
-      h2hEl.innerHTML += `<p style="color:var(--text-dim); font-size:12px;">两队未在世界杯正赛交锋过</p>`;
+      h2hEl.innerHTML += `<p style="color:var(--text-dim); font-size:12px;">${_t('pred.no.h2h')}</p>`;
     }
 
     // ─ Form ─
@@ -676,32 +706,32 @@ const App = {
       <div class="metric-row">
         <span class="metric-label">${hE} ${hZh}</span>
         <span class="metric-value">
-          ${(homeStats.recentForm || []).map(f => this.formBadge(f)).join(' ')} (${form.homeForm}分)
+          ${(homeStats.recentForm || []).map(f => this.formBadge(f)).join(' ')} (${form.homeForm}${_t('pred.form.pts')})
         </span>
       </div>
       <div class="metric-row">
         <span class="metric-label">${aE} ${aZh}</span>
         <span class="metric-value">
-          ${(awayStats.recentForm || []).map(f => this.formBadge(f)).join(' ')} (${form.awayForm}分)
+          ${(awayStats.recentForm || []).map(f => this.formBadge(f)).join(' ')} (${form.awayForm}${_t('pred.form.pts')})
         </span>
       </div>`;
 
     // ─ Attack & Defense ─
     const ad = components.attackDefense;
     document.getElementById('attackData').innerHTML = `
-      <div class="metric-row"><span class="metric-label">${hZh} 进攻</span><span class="metric-value ${ad.homeAttack>=8.5?'high':''}">${ad.homeAttack.toFixed(1)}/10</span></div>
-      <div class="metric-row"><span class="metric-label">${hZh} 防守</span><span class="metric-value ${ad.homeDefense>=8.0?'high':''}">${ad.homeDefense.toFixed(1)}/10</span></div>
-      <div class="metric-row"><span class="metric-label">${aZh} 进攻</span><span class="metric-value ${ad.awayAttack>=8.5?'high':''}">${ad.awayAttack.toFixed(1)}/10</span></div>
-      <div class="metric-row"><span class="metric-label">${aZh} 防守</span><span class="metric-value ${ad.awayDefense>=8.0?'high':''}">${ad.awayDefense.toFixed(1)}/10</span></div>
-      <div class="metric-row"><span class="metric-label">预期总进球</span><span class="metric-value">${(parseFloat(result.expectedGoals?.home||1.5)+parseFloat(result.expectedGoals?.away||1.5)).toFixed(1)} 球</span></div>`;
+      <div class="metric-row"><span class="metric-label">${hZh} ${_t('analysis.attack.label')}</span><span class="metric-value ${ad.homeAttack>=8.5?'high':''}">${ad.homeAttack.toFixed(1)}/10</span></div>
+      <div class="metric-row"><span class="metric-label">${hZh} ${_t('analysis.defense.label')}</span><span class="metric-value ${ad.homeDefense>=8.0?'high':''}">${ad.homeDefense.toFixed(1)}/10</span></div>
+      <div class="metric-row"><span class="metric-label">${aZh} ${_t('analysis.attack.label')}</span><span class="metric-value ${ad.awayAttack>=8.5?'high':''}">${ad.awayAttack.toFixed(1)}/10</span></div>
+      <div class="metric-row"><span class="metric-label">${aZh} ${_t('analysis.defense.label')}</span><span class="metric-value ${ad.awayDefense>=8.0?'high':''}">${ad.awayDefense.toFixed(1)}/10</span></div>
+      <div class="metric-row"><span class="metric-label">${_t('pred.expected.goals')}</span><span class="metric-value">${(parseFloat(result.expectedGoals?.home||1.5)+parseFloat(result.expectedGoals?.away||1.5)).toFixed(1)} ${_t('pred.goals.unit')}</span></div>`;
 
     // ─ Players ─
     document.getElementById('playerData').innerHTML = `
-      <div class="metric-row"><span class="metric-label">${hE} 核心球员</span><span class="metric-value" style="font-size:12px;">${homeStats.starPlayer}</span></div>
-      <div class="metric-row"><span class="metric-label">${aE} 核心球员</span><span class="metric-value" style="font-size:12px;">${awayStats.starPlayer}</span></div>
-      <div class="metric-row"><span class="metric-label">${hZh} 战术</span><span class="metric-value" style="font-size:12px;">${homeStats.style}</span></div>
-      <div class="metric-row"><span class="metric-label">${aZh} 战术</span><span class="metric-value" style="font-size:12px;">${awayStats.style}</span></div>
-      <div class="metric-row"><span class="metric-label">冠军次数</span><span class="metric-value">${homeStats.worldcupWins}🏆 vs ${awayStats.worldcupWins}🏆</span></div>`;
+      <div class="metric-row"><span class="metric-label">${hE} ${_t('pred.core.player')}</span><span class="metric-value" style="font-size:12px;">${homeStats.starPlayer}</span></div>
+      <div class="metric-row"><span class="metric-label">${aE} ${_t('pred.core.player')}</span><span class="metric-value" style="font-size:12px;">${awayStats.starPlayer}</span></div>
+      <div class="metric-row"><span class="metric-label">${hZh} ${_t('pred.tactics')}</span><span class="metric-value" style="font-size:12px;">${homeStats.style}</span></div>
+      <div class="metric-row"><span class="metric-label">${aZh} ${_t('pred.tactics')}</span><span class="metric-value" style="font-size:12px;">${awayStats.style}</span></div>
+      <div class="metric-row"><span class="metric-label">${_t('pred.championships')}</span><span class="metric-value">${homeStats.worldcupWins}🏆 vs ${awayStats.worldcupWins}🏆</span></div>`;
 
     // ─ Score distribution ─
     const distGrid = document.getElementById('scoreDistGrid');
@@ -739,31 +769,31 @@ const App = {
     const favPct = Math.max(hPct, aPct);
 
     if (hPct >= 60) {
-      parlays.push({ type: '胜负推荐', picks: [{ label: '主胜', detail: `${hZh} 胜 · 概率 ${hPct}%` }], odds: this._estimateOdds(hPct) });
+      parlays.push({ type: _t('parlay.type.winloss'), picks: [{ label: _t('parlay.home.win'), detail: `${hZh} ${_t('parlay.home.win')} · ${_t('pred.probability')} ${hPct}%` }], odds: this._estimateOdds(hPct) });
     } else if (aPct >= 60) {
-      parlays.push({ type: '胜负推荐', picks: [{ label: '客胜', detail: `${aZh} 胜 · 概率 ${aPct}%` }], odds: this._estimateOdds(aPct) });
+      parlays.push({ type: _t('parlay.type.winloss'), picks: [{ label: _t('parlay.away.win'), detail: `${aZh} ${_t('parlay.away.win')} · ${_t('pred.probability')} ${aPct}%` }], odds: this._estimateOdds(aPct) });
     } else {
-      parlays.push({ type: '胜负推荐', picks: [{ label: '让球不败', detail: `${favTeam} 不败 · 概率 ${favPct + dPct}%` }], odds: this._estimateOdds(favPct + dPct) });
+      parlays.push({ type: _t('parlay.type.winloss'), picks: [{ label: _t('parlay.unbeaten.pick'), detail: `${favTeam} ${_t('parlay.unbeaten')} · ${_t('pred.probability')} ${favPct + dPct}%` }], odds: this._estimateOdds(favPct + dPct) });
     }
 
     parlays.push({
-      type: '总进球推荐',
-      picks: [{ label: totalGoals >= 3 ? '大球 ≥3' : '小球 ≤2', detail: `预测总进球 ${totalGoals}，${totalGoals>=3?'大球':'小球'}倾向` }],
+      type: _t('parlay.type.goals'),
+      picks: [{ label: totalGoals >= 3 ? _t('parlay.over.pick') : _t('parlay.under.pick'), detail: `${_t('parlay.total.goals.pred')} ${totalGoals}，${totalGoals>=3?_t('parlay.over.pick'):_t('parlay.under.pick')}${_t('parlay.tendency')}` }],
       odds: totalGoals >= 3 ? 1.80 : 1.75
     });
 
     parlays.push({
-      type: '波胆首选（高赔）',
+      type: _t('parlay.type.score1'),
       picks: [
-        { label: `${primaryScore.home}:${primaryScore.away}`, detail: `首选比分 · 概率 ${primaryScore.pct}%` }
+        { label: `${primaryScore.home}:${primaryScore.away}`, detail: `${_t('parlay.primary.score')} · ${_t('pred.probability')} ${primaryScore.pct}%` }
       ],
       odds: this._estimateOdds(parseFloat(primaryScore.pct) * 1.5)
     });
 
     parlays.push({
-      type: '波胆次选',
+      type: _t('parlay.type.score2'),
       picks: [
-        { label: `${secondaryScore.home}:${secondaryScore.away}`, detail: `次选比分 · 概率 ${secondaryScore.pct}%` }
+        { label: `${secondaryScore.home}:${secondaryScore.away}`, detail: `${_t('parlay.secondary.score')} · ${_t('pred.probability')} ${secondaryScore.pct}%` }
       ],
       odds: this._estimateOdds(parseFloat(secondaryScore.pct) * 1.5)
     });
@@ -794,12 +824,12 @@ const App = {
         const oFav = oPred.homeWinProb >= oPred.awayWinProb ? this.zhName(oPred.homeTeam) : this.zhName(oPred.awayTeam);
         const oPct = Math.max(Math.round(oPred.homeWinProb*100), Math.round(oPred.awayWinProb*100));
         const oMatch = allMatches[otherIdx];
-        const dayLabel = oMatch.day === 'tomorrow' ? '（明日）' : '';
+        const dayLabel = oMatch.day === 'tomorrow' ? _t('parlay.tomorrow.tag') : '';
         parlays.push({
-          type: '2串1 推荐',
+          type: _t('parlay.type.parlay2'),
           picks: [
-            { label: '场1', detail: `${favTeam} 不败` },
-            { label: `场2${dayLabel}`, detail: `${oFav} 不败` }
+            { label: `${_t('parlay.match.unit')}1`, detail: `${favTeam} ${_t('parlay.unbeaten')}` },
+            { label: `${_t('parlay.match.unit')}2${dayLabel}`, detail: `${oFav} ${_t('parlay.unbeaten')}` }
           ],
           odds: parseFloat((this._estimateOdds(favPct) * this._estimateOdds(oPct)).toFixed(2))
         });
@@ -816,16 +846,16 @@ const App = {
           const fav = ap.homeWinProb >= ap.awayWinProb ? this.zhName(ap.homeTeam) : this.zhName(ap.awayTeam);
           const favP = Math.max(Math.round(ap.homeWinProb*100), Math.round(ap.awayWinProb*100));
           const am = allMatches[k];
-          const dl = am.day === 'tomorrow' ? '（明日）' : '';
-          picks3.push({ label: `场${picks3.length+2}${dl}`, detail: `${fav} 不败` });
+          const dl = am.day === 'tomorrow' ? _t('parlay.tomorrow.tag') : '';
+          picks3.push({ label: `场${picks3.length+2}${dl}`, detail: `${fav} ${_t('parlay.unbeaten')}` });
           odds3 *= this._estimateOdds(favP);
           used.add(ap.homeTeam);
           used.add(ap.awayTeam);
         }
         if (picks3.length >= 1) {
           parlays.push({
-            type: `${picks3.length + 1}串1 推荐`,
-            picks: [{ label: '场1', detail: `${favTeam} 不败` }, ...picks3],
+            type: _t('parlay.type.parlay3'),
+            picks: [{ label: `${_t('parlay.match.unit')}1`, detail: `${favTeam} ${_t('parlay.unbeaten')}` }, ...picks3],
             odds: parseFloat((this._estimateOdds(favPct) * odds3).toFixed(2))
           });
         }
@@ -843,7 +873,7 @@ const App = {
           </div>
         `).join('')}
         <div class="parlay-odds">
-          <span class="odds-label">参考赔率</span>
+          <span class="odds-label">${_t('parlay.ref.odds')}</span>
           <span class="odds-value">@ ${p.odds.toFixed(2)}</span>
         </div>
       </div>
@@ -883,7 +913,7 @@ const App = {
         const hE = this.emoji(r.home);
         const aE = this.emoji(r.away);
         const dualTime = this._formatDualTime(r.time, r.venue);
-        html += `
+            html += `
           <div class="schedule-match completed" data-type="group" data-status="completed">
             <span class="match-group-badge">${this.groupLabel(r.group)}</span>
             <span class="match-time-badge">${dualTime}</span>
@@ -894,8 +924,8 @@ const App = {
                 <span class="match-away">${aZh} ${aE}</span>
               </div>
             </div>
-            <span class="match-status status-ft">终场</span>
-            <span class="match-venue-tag">📍 ${r.venue}</span>
+            <span class="match-status status-ft">${_t('match.ft')}</span>
+            <span class="match-venue-tag">📍 ${this.venueName(r.venue)}</span>
           </div>`;
       }
     }
@@ -921,17 +951,17 @@ const App = {
         if (matchStatus === 'live' || m.liveScore) {
           // 有实际实时比分时优先显示真实比分
           if (m.liveScore) {
-            statusBadge = `<span class="match-status status-live">🔴 进行中 · ${m.liveScore.min || '--'}</span>`;
+            statusBadge = `<span class="match-status status-live">${_t('match.live')} · ${m.liveScore.min || '--'}</span>`;
             scoreDisplay = `<span class="match-score-block score-live-pulse" style="color:#ef4444;font-weight:900;">${m.liveScore.hg} - ${m.liveScore.ag}</span>`;
           } else {
-            statusBadge = '<span class="match-status status-live">🔴 进行中</span>';
+            statusBadge = `<span class="match-status status-live">${_t('match.live')}</span>`;
             scoreDisplay = '<span class="match-score-block score-live-pulse" style="color:#fbbf24;">VS</span>';
           }
         } else if (matchStatus === 'likely_completed') {
-          statusBadge = '<span class="match-status" style="color:#f97316;">⏳ 预计已结束</span>';
-          scoreDisplay = '<span class="match-score-block" style="color:#f97316;">待确认</span>';
+          statusBadge = `<span class="match-status" style="color:#f97316;">${_t('match.likely.completed')}</span>`;
+          scoreDisplay = `<span class="match-score-block" style="color:#f97316;">${_t('match.tbd.score')}</span>`;
         } else {
-          statusBadge = `<span class="match-status status-upcoming">待赛</span>`;
+          statusBadge = `<span class="match-status status-upcoming">${_t('match.upcoming.short')}</span>`;
           scoreDisplay = '<span class="match-score-block upcoming-label">VS</span>';
         }
 
@@ -972,30 +1002,30 @@ const App = {
 
     if (filter === 'all' || filter === 'knockout') {
       html += `
-        <div class="schedule-day-header">🏆 ${I18n.lang === 'zh' ? '32强赛 (6月28日起) — 淘汰赛' : I18n.lang === 'es' ? 'Ronda de 32 (desde 28 jun) — Eliminatoria' : I18n.lang === 'fr' ? '32es de finale (dès le 28 juin) — Éliminatoires' : 'Round of 32 (from Jun 28) — Knockout'}</div>
+        <div class="schedule-day-header">🏆 ${_t('bracket.ko.round')}</div>
         <div class="schedule-match upcoming">
           <span class="match-group-badge">KO</span>
           <div class="match-teams-block">
             <div class="match-teams-row">
-              <span class="match-home">${I18n.lang === 'zh' ? '小组晋级队' : I18n.lang === 'es' ? 'Clasificado de grupo' : I18n.lang === 'fr' ? 'Qualifié de groupe' : 'Group Qualifier'}</span>
+              <span class="match-home">${_t('bracket.group.qualifier')}</span>
               <span class="match-score-block upcoming-label">VS</span>
-              <span class="match-away">${I18n.lang === 'zh' ? '小组晋级队' : I18n.lang === 'es' ? 'Clasificado de grupo' : I18n.lang === 'fr' ? 'Qualifié de groupe' : 'Group Qualifier'}</span>
+              <span class="match-away">${_t('bracket.group.qualifier')}</span>
             </div>
           </div>
-          <span class="match-status status-upcoming">${t('common.TBD')}</span>
-          <span class="match-venue-tag">${I18n.lang === 'zh' ? '多城市' : I18n.lang === 'es' ? 'Multi-ciudad' : I18n.lang === 'fr' ? 'Multi-villes' : 'Multi-city'}</span>
+          <span class="match-status status-upcoming">${_t('common.TBD')}</span>
+          <span class="match-venue-tag">${_t('bracket.multi.city')}</span>
         </div>
-        <div class="schedule-day-header">🏆 ${I18n.lang === 'zh' ? '决赛 (7月19日) — 纽约 MetLife' : I18n.lang === 'es' ? 'Final (19 jul) — Nueva York MetLife' : I18n.lang === 'fr' ? 'Finale (19 juil) — New York MetLife' : 'Final (Jul 19) — New York MetLife'}</div>
+        <div class="schedule-day-header">🏆 ${_t('bracket.final.match')}</div>
         <div class="schedule-match upcoming">
-          <span class="match-group-badge">${I18n.lang === 'zh' ? '决赛' : I18n.lang === 'es' ? 'Final' : I18n.lang === 'fr' ? 'Finale' : 'Final'}</span>
+          <span class="match-group-badge">${_t('bracket.final.tag')}</span>
           <div class="match-teams-block">
             <div class="match-teams-row">
-              <span class="match-home">${I18n.lang === 'zh' ? '半决赛胜者' : I18n.lang === 'es' ? 'Ganador SF' : I18n.lang === 'fr' ? 'Vainqueur DF' : 'SF Winner'}</span>
+              <span class="match-home">${_t('bracket.sf.winner')}</span>
               <span class="match-score-block upcoming-label">VS</span>
-              <span class="match-away">${I18n.lang === 'zh' ? '半决赛胜者' : I18n.lang === 'es' ? 'Ganador SF' : I18n.lang === 'fr' ? 'Vainqueur DF' : 'SF Winner'}</span>
+              <span class="match-away">${_t('bracket.sf.winner')}</span>
             </div>
           </div>
-          <span class="match-status status-upcoming">${t('common.TBD')}</span>
+          <span class="match-status status-upcoming">${_t('common.TBD')}</span>
           <span class="match-venue-tag">📍 MetLife</span>
         </div>`;
     }
@@ -1034,7 +1064,7 @@ const App = {
 
         // 1. 完全命中
         if (predHg === actualHg && predAg === actualAg) {
-          result = '完全命中';
+          result = _t('parlay.hit.full');
           resultClass = 'perfect';
           resultIcon = '🎯';
           exactHits++;
@@ -1045,12 +1075,12 @@ const App = {
           const predWin = predHg > predAg ? 'home' : (predAg > predHg ? 'away' : 'draw');
           const actualWin = actualHg > actualAg ? 'home' : (actualAg > actualHg ? 'away' : 'draw');
           if (predWin === actualWin) {
-            result = '命中胜负';
+            result = _t('parlay.hit.direction');
             resultClass = 'partial';
             resultIcon = '✓';
             correctWins++;
           } else {
-            result = '未中';
+            result = _t('parlay.hit.miss');
             resultClass = 'wrong';
             resultIcon = '✗';
           }
@@ -1061,15 +1091,15 @@ const App = {
 
         predHtml = `
           <div class="rc-prediction">
-            <div class="rc-pred-label">🤖 AI赛前预测</div>
+            <div class="rc-pred-label">${_t('results.ai.pred')}</div>
             <div class="rc-pred-comparison">
               <div class="rc-pred-side rc-pred-predicted">
-                <div class="rc-pred-side-label">预测</div>
+                <div class="rc-pred-side-label">${_t('results.predicted')}</div>
                 <div class="rc-pred-score">${predHg} - ${predAg}</div>
               </div>
               <div class="rc-pred-vs">→</div>
               <div class="rc-pred-side rc-pred-actual">
-                <div class="rc-pred-side-label">实际</div>
+                <div class="rc-pred-side-label">${_t('results.actual')}</div>
                 <div class="rc-pred-score">${actualHg} - ${actualAg}</div>
               </div>
               <div class="rc-pred-result rc-pred-${resultClass}">${resultIcon} ${result}</div>
@@ -1079,8 +1109,8 @@ const App = {
         // 无预测数据
         predHtml = `
           <div class="rc-prediction rc-pred-na">
-            <div class="rc-pred-label">🤖 AI预测</div>
-            <div class="rc-pred-na-text">未记录预测</div>
+            <div class="rc-pred-label">${_t('results.ai.pred')}</div>
+            <div class="rc-pred-na-text">${_t('results.not.recorded')}</div>
           </div>`;
         totalMatches++;
       }
@@ -1090,16 +1120,16 @@ const App = {
           <div class="rc-header">
             <div class="rc-date">${r.date}</div>
             <div class="rc-time">${dualTime}</div>
-            <div class="rc-group">${r.group}组</div>
+            <div class="rc-group">${r.group}${_t('common.group')}</div>
           </div>
           <div class="rc-teams">
             <div class="rc-team">
-              <div style="font-size:32px;margin-bottom:4px;">${hE}</div>
+              <div style="margin-bottom:4px;">${this.emoji(r.home, 36)}</div>
               <div>${hZh}</div>
             </div>
             <div class="rc-score">${r.hg} - ${r.ag}</div>
             <div class="rc-team">
-              <div style="font-size:32px;margin-bottom:4px;">${aE}</div>
+              <div style="margin-bottom:4px;">${this.emoji(r.away, 36)}</div>
               <div>${aZh}</div>
             </div>
           </div>
@@ -1117,31 +1147,35 @@ const App = {
         <div class="accuracy-card accuracy-main">
           <div class="accuracy-icon">📊</div>
           <div class="accuracy-content">
-            <div class="accuracy-label">AI预测准确率</div>
+            <div class="accuracy-label">${_t('results.accuracy')}</div>
             <div class="accuracy-value">${accuracy}<span class="accuracy-unit">%</span></div>
-            <div class="accuracy-sub">胜负方向 · ${correctWins}/${totalWithPred}场</div>
+            <div class="accuracy-sub">${_t('results.direction')} · ${correctWins}/${totalWithPred}${_t('results.match.unit')}</div>
           </div>
         </div>
         <div class="accuracy-card accuracy-exact">
           <div class="accuracy-icon">🎯</div>
           <div class="accuracy-content">
-            <div class="accuracy-label">完全命中</div>
+            <div class="accuracy-label">${_t('results.exact.hit')}</div>
             <div class="accuracy-value">${exactRate}<span class="accuracy-unit">%</span></div>
-            <div class="accuracy-sub">比分精确 · ${exactHits}/${totalWithPred}场</div>
+            <div class="accuracy-sub">${_t('results.exact.rate')} · ${exactHits}/${totalWithPred}${_t('results.match.unit')}</div>
           </div>
         </div>
         <div class="accuracy-card accuracy-total">
           <div class="accuracy-icon">⚽</div>
           <div class="accuracy-content">
-            <div class="accuracy-label">已完赛</div>
-            <div class="accuracy-value">${totalMatches}<span class="accuracy-unit">场</span></div>
-            <div class="accuracy-sub">${WC2026_DATA.completedResults.length > 0 ? WC2026_DATA.completedResults[WC2026_DATA.completedResults.length-1].date + ' 最新' : ''}</div>
+            <div class="accuracy-label">${_t('results.completed')}</div>
+            <div class="accuracy-value">${totalMatches}<span class="accuracy-unit">${_t('results.match.unit')}</span></div>
+            <div class="accuracy-sub">${WC2026_DATA.completedResults.length > 0 ? WC2026_DATA.completedResults[WC2026_DATA.completedResults.length-1].date + ' ' + _t('results.latest') : ''}</div>
           </div>
         </div>
       </div>`;
 
-    if (!html) html = '<div style="text-align:center;padding:48px;color:var(--text-dim);">暂无比赛结果</div>';
-    grid.innerHTML = summaryHtml + html;
+    if (!html) html = `<div style="text-align:center;padding:48px;color:var(--text-dim);">${_t('results.no.data')}</div>`;
+    grid.innerHTML = html;
+
+    // 统计卡片独立渲染到专属容器
+    const banner = document.getElementById('accuracyBanner');
+    if (banner) banner.innerHTML = summaryHtml;
   },
 
   // ── Knockout Bracket Rendering ──
@@ -1171,7 +1205,7 @@ const App = {
       }
       return `<div class="bk-team bk-empty">
         <span class="bk-emoji">🏴</span>
-        <span class="bk-name">${label || '待定'}</span>
+        <span class="bk-name">${label || _t('bracket.tbd')}</span>
       </div>`;
     };
 
@@ -1195,9 +1229,9 @@ const App = {
           <span class="bk-round-tag">${roundLabel}</span>
           <span class="bk-match-num">#${idx + 1}</span>
         </div>
-        <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">待定</span></div>
+        <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.tbd')}</span></div>
         <div class="bk-vs"><span>VS</span></div>
-        <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">待定</span></div>
+        <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.tbd')}</span></div>
       </div>`;
     };
 
@@ -1235,14 +1269,14 @@ const App = {
 
     // ── Upper Half: R32(1-8) → R16(1-4) → QF(1-2) → SF1 ──
     const upperHalf = `
-      ${roundCol(upperR32, 8, '32强赛', '6/28-7/3', 'R32', 'upper', false)}
+      ${roundCol(upperR32, 8, _t('bracket.r32'), '6/28-7/3', 'R32', 'upper', false)}
       ${connectorCol(4, 'right')}
-      ${roundCol([], 4, '16强赛', '7/4-7/7', 'R16', 'upper', true)}
+      ${roundCol([], 4, _t('bracket.r16'), '7/4-7/7', 'R16', 'upper', true)}
       ${connectorCol(2, 'right')}
-      ${roundCol([], 2, '1/4决赛', '7/8-7/11', 'QF', 'upper', true)}
+      ${roundCol([], 2, _t('bracket.qf'), '7/8-7/11', 'QF', 'upper', true)}
       ${connectorCol(1, 'right')}
       <div class="bk-round-col bk-sf-col">
-        <div class="bk-round-title">半决赛①<span class="bk-round-date">7/14</span></div>
+        <div class="bk-round-title">${_t('bracket.sf1')}<span class="bk-round-date">7/14</span></div>
         <div class="bk-round-matches">
           <div class="bk-pair">${emptyMatchCard('SF', 0, 'upper')}</div>
         </div>
@@ -1252,28 +1286,28 @@ const App = {
     // ── Center: 3rd Place + Final ──
     const centerCol = `
       <div class="bk-center-col">
-        <div class="bk-center-label">🏅 决赛阶段</div>
+        <div class="bk-center-label">${_t('bracket.final.stage')}</div>
         <div class="bk-match bk-3rd-place">
           <div class="bk-match-header">
-            <span class="bk-round-tag">季军赛</span>
+            <span class="bk-round-tag">${_t('bracket.3rd')}</span>
             <span class="bk-round-date">7/18</span>
           </div>
-          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">SF①负方</span></div>
+          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.sf1.loser')}</span></div>
           <div class="bk-vs"><span>VS</span></div>
-          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">SF②负方</span></div>
+          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.sf2.loser')}</span></div>
         </div>
         <div class="bk-match bk-final">
           <div class="bk-match-header">
-            <span class="bk-round-tag bk-final-tag">🏆 决赛</span>
+            <span class="bk-round-tag bk-final-tag">${_t('bracket.final')}</span>
             <span class="bk-round-date">7/19</span>
           </div>
-          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">SF①胜方</span></div>
+          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.sf1.winner')}</span></div>
           <div class="bk-vs bk-vs-final"><span>VS</span></div>
-          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">SF②胜方</span></div>
+          <div class="bk-team bk-empty"><span class="bk-emoji">🏴</span><span class="bk-name">${_t('bracket.sf2.winner')}</span></div>
         </div>
         <div class="bk-champion-slot">
           <div class="bk-trophy">🏆</div>
-          <div class="bk-champion-label">2026 冠军</div>
+          <div class="bk-champion-label">${_t('bracket.champion')}</div>
         </div>
       </div>
     `;
@@ -1281,30 +1315,30 @@ const App = {
     // ── Lower Half: SF2 ← QF(3-4) ← R16(5-8) ← R32(9-16) ──
     const lowerHalf = `
       <div class="bk-round-col bk-sf-col">
-        <div class="bk-round-title">半决赛②<span class="bk-round-date">7/15</span></div>
+        <div class="bk-round-title">${_t('bracket.sf2')}<span class="bk-round-date">7/15</span></div>
         <div class="bk-round-matches">
           <div class="bk-pair">${emptyMatchCard('SF', 0, 'lower')}</div>
         </div>
       </div>
       ${connectorCol(1, 'left')}
-      ${roundCol([], 2, '1/4决赛', '7/8-7/11', 'QF', 'lower', true)}
+      ${roundCol([], 2, _t('bracket.qf'), 'QF', 'lower', true)}
       ${connectorCol(2, 'left')}
-      ${roundCol([], 4, '16强赛', '7/4-7/7', 'R16', 'lower', true)}
+      ${roundCol([], 4, _t('bracket.r16'), 'R16', 'lower', true)}
       ${connectorCol(4, 'left')}
-      ${roundCol(lowerR32, 8, '32强赛', '6/28-7/3', 'R32', 'lower', false)}
+      ${roundCol(lowerR32, 8, _t('bracket.r32'), 'R32', 'lower', false)}
     `;
 
     // ── Assemble ──
     container.innerHTML = `
       <div class="bk-legend">
         <div class="bk-legend-left">
-          <span>📊 基于当前积分自动预测晋级 · 已填充 <strong>${filledCount}</strong>/32 个席位</span>
+          <span>${_t('bracket.based.on')} <strong>${filledCount}</strong>${_t('bracket.seats')}</span>
         </div>
         <div class="bk-legend-right">
-          <span class="bk-legend-dot" style="background:#4ade80"></span> 上半区
-          <span class="bk-legend-dot" style="background:#f59e0b"></span> 决赛
-          <span class="bk-legend-dot" style="background:#60a5fa"></span> 下半区
-          <span class="bk-legend-dot" style="background:#4d7a5e"></span> 待定
+          <span class="bk-legend-dot" style="background:#4ade80"></span> ${_t('bracket.upper')}
+          <span class="bk-legend-dot" style="background:#f59e0b"></span> ${_t('bracket.final.tag')}
+          <span class="bk-legend-dot" style="background:#60a5fa"></span> ${_t('bracket.lower')}
+          <span class="bk-legend-dot" style="background:#4d7a5e"></span> ${_t('bracket.tbd')}
         </div>
       </div>
       <div class="bk-scroll">
@@ -1335,7 +1369,7 @@ const App = {
     setInterval(() => {
       const currentDate = this.todayDate;
       if (currentDate !== lastDate) {
-        console.log(`[App] 📅 日期变化: ${lastDate} → ${currentDate}，强制刷新`);
+        console.log(`[App] Date change: ${lastDate} → ${currentDate}, forcing refresh`);
         lastDate = currentDate;
         this.doRefresh();
       }
@@ -1351,7 +1385,7 @@ const App = {
     const indicator = document.createElement('div');
     indicator.id = 'dataFreshnessIndicator';
     indicator.className = 'data-freshness-indicator';
-    indicator.innerHTML = `<span class="df-dot"></span><span class="df-label">本地数据</span>`;
+    indicator.innerHTML = `<span class="df-dot"></span><span class="df-label">${_t('common.local.data')}</span>`;
     header.appendChild(indicator);
 
     // 定期更新
@@ -1374,18 +1408,6 @@ const App = {
     this.renderResults();
   },
 
-  // ── 手动刷新全部数据 ──
-  async manualRefreshAll() {
-    if (typeof LiveData !== 'undefined') {
-      await LiveData.manualRefresh();
-    }
-    this.renderTodayMatches();
-    this.renderSchedule();
-    this.renderResults();
-    this.renderGroups();
-    this._updateFreshnessDisplay();
-  },
-
   // ── 渲染所有 ──
   renderAll() {
     this.renderTodayMatches();
@@ -1397,17 +1419,6 @@ const App = {
   },
 
   // ── API配置（密钥已在服务端，无需客户端配置）──
-  toggleApiConfig() {
-    alert('🔒 所有 API 密钥已安全隐藏在服务端，无需客户端配置。');
-  },
-
-  saveAFKey() {
-    alert('🔒 API 密钥已安全隐藏在服务端，无需手动配置。');
-  },
-
-  saveFDKey() {
-    alert('🔒 API 密钥已安全隐藏在服务端，无需手动配置。');
-  },
 
   // ── Draw SVG connector lines after bracket renders ──
   _drawBracketConnectors() {
@@ -1500,9 +1511,9 @@ const App = {
       });
 
       html += `<div class="group-card">
-        <div class="group-card-header">🏅 ${grp} ${I18n.lang === 'zh' ? '组' : I18n.lang === 'es' ? 'Grupo' : I18n.lang === 'fr' ? 'Groupe' : 'Group'}</div>
+        <div class="group-card-header">🏅 ${this.groupLabel(grp)}</div>
         <table class="group-table">
-          <thead><tr><th>${t('group.table.pos')}</th><th>${t('group.table.team')}</th><th>${t('group.table.played')}</th><th>${t('group.table.win')}</th><th>${t('group.table.draw')}</th><th>${t('group.table.loss')}</th><th>${t('group.table.gd')}</th><th>${t('group.table.pts')}</th></tr></thead>
+          <thead><tr><th>${_t('group.table.pos')}</th><th>${_t('group.table.team')}</th><th>${_t('group.table.played')}</th><th>${_t('group.table.win')}</th><th>${_t('group.table.draw')}</th><th>${_t('group.table.loss')}</th><th>${_t('group.table.gd')}</th><th>${_t('group.table.pts')}</th></tr></thead>
           <tbody>
             ${teamList.map(([team, s], idx) => {
               const emoji = this.emoji(team);
@@ -1529,6 +1540,15 @@ const App = {
   // ── Team Power Rankings ──
   renderTeamsPower(filter = '') {
     const list = document.getElementById('teamsPowerList');
+    if (!list) { console.error('[renderTeamsPower] #teamsPowerList not found'); return; }
+    
+    try {
+      var statsCount = Object.keys(WC2026_DATA.teamStats || {}).length;
+    } catch(e) {
+      list.innerHTML = '<div style="color:#f87171;padding:12px;">⚠️ 数据加载失败: teamStats</div>';
+      return;
+    }
+
     const teams = Object.entries(WC2026_DATA.teamStats).map(([name, stats]) => {
       const rank = WC2026_DATA.fifaRankings[name];
       const rankScore = rank ? Math.max(0, (100 - rank.rank) / 100) * 10 : 5;
@@ -1566,12 +1586,12 @@ const App = {
           <div class="power-flag">${emoji}</div>
           <div class="power-name">
             ${zh}
-            <div class="power-name-sub">${t.rank?`FIFA #${t.rank.rank}`:''} ${t.stats.worldcupWins>0?'🏆'.repeat(t.stats.worldcupWins):''}</div>
+            <div class="power-name-sub">${t.rank?`${_t('pred.fifa.rank')}${t.rank.rank}`:''} ${t.stats.worldcupWins>0?'🏆'.repeat(t.stats.worldcupWins):''}</div>
           </div>
           <div class="power-metrics">
-            <div class="power-metric"><div class="pm-val" style="color:#16a34a">${t.stats.attack.toFixed(1)}</div><div class="pm-label">进攻</div></div>
-            <div class="power-metric"><div class="pm-val" style="color:#dc2626">${t.stats.defense.toFixed(1)}</div><div class="pm-label">防守</div></div>
-            <div class="power-metric"><div class="pm-val" style="color:#f59e0b">${t.power.toFixed(1)}</div><div class="pm-label">综合</div></div>
+            <div class="power-metric"><div class="pm-val" style="color:#16a34a">${t.stats.attack.toFixed(1)}</div><div class="pm-label">${_t('tp.attack')}</div></div>
+            <div class="power-metric"><div class="pm-val" style="color:#dc2626">${t.stats.defense.toFixed(1)}</div><div class="pm-label">${_t('tp.defense')}</div></div>
+            <div class="power-metric"><div class="pm-val" style="color:#f59e0b">${t.power.toFixed(1)}</div><div class="pm-label">${_t('tp.overall')}</div></div>
           </div>
           <div class="power-bar-wrap"><div class="power-bar" style="width:${pct}%;background:${barColor};"></div></div>
           <div class="power-expand-icon">${isSelected ? '▲' : '▼'}</div>
@@ -1596,16 +1616,16 @@ const App = {
               <span class="td-flag">${emoji}</span>
               <div class="td-name-wrap">
                 <div class="td-name">${zh}</div>
-                <div class="td-sub">${t.rank ? `FIFA 排名 #${t.rank.rank}` : ''} · ${teamGroup}组 · ${t.stats.worldcupWins > 0 ? '🏆'.repeat(t.stats.worldcupWins) : ''}</div>
+                <div class="td-sub">${t.rank ? `${_t('pred.fifa.rank')}${t.rank.rank}` : ''} · ${teamGroup}${_t('common.group')} · ${t.stats.worldcupWins > 0 ? '🏆'.repeat(t.stats.worldcupWins) : ''}</div>
               </div>
             </div>
-            <button class="td-close-btn" onclick="App.showTeamDetail('${t.name}')">✕ <span data-i18n="team.tab.close">${I18n.lang === 'zh' ? '收起' : I18n.lang === 'es' ? 'Cerrar' : I18n.lang === 'fr' ? 'Fermer' : 'Close'}</span></button>
+            <button class="td-close-btn" onclick="App.showTeamDetail('${t.name}')">✕ <span data-i18n="team.tab.close">${_t('td.close')}</span></button>
           </div>
           <div class="td-tabs">
-            <button class="td-tab${activeTab==='squad'?' active':''}" onclick="App._switchTeamTab('squad','${t.name}')">💰 ${I18n.lang === 'zh' ? '大名单身价' : I18n.lang === 'es' ? 'Plantilla y Valor' : I18n.lang === 'fr' ? 'Effectif & Valeur' : 'Squad & Value'}</button>
-            <button class="td-tab${activeTab==='injuries'?' active':''}" onclick="App._switchTeamTab('injuries','${t.name}')">🏥 ${t('team.tab.injuries')}</button>
-            <button class="td-tab${activeTab==='analysis'?' active':''}" onclick="App._switchTeamTab('analysis','${t.name}')">📊 ${t('team.tab.analysis')}</button>
-            <button class="td-tab${activeTab==='history'?' active':''}" onclick="App._switchTeamTab('history','${t.name}')">📜 ${I18n.lang === 'zh' ? '历史对战' : I18n.lang === 'es' ? 'Historial' : I18n.lang === 'fr' ? 'Historique' : 'History'}</button>
+            <button class="td-tab${activeTab==='squad'?' active':''}" onclick="App._switchTeamTab('squad','${t.name}')">💰 ${_t('td.squad.value.tab')}</button>
+            <button class="td-tab${activeTab==='injuries'?' active':''}" onclick="App._switchTeamTab('injuries','${t.name}')">🏥 ${_t('team.tab.injuries')}</button>
+            <button class="td-tab${activeTab==='analysis'?' active':''}" onclick="App._switchTeamTab('analysis','${t.name}')">📊 ${_t('team.tab.analysis')}</button>
+            <button class="td-tab${activeTab==='history'?' active':''}" onclick="App._switchTeamTab('history','${t.name}')">📜 ${_t('td.history.tab')}</button>
           </div>
           <div class="td-content">
             ${tabContent}
@@ -1692,11 +1712,11 @@ const App = {
 
       return `
         <div class="squad-summary">
-          <div class="squad-total-val">💰 全队总身价 <strong>${totalVal}</strong></div>
-          <div class="squad-count">📋 大名单 ${detail.squad.length} 人</div>
+          <div class="squad-total-val">${_t('td.squad.value')} <strong>${totalVal}</strong></div>
+          <div class="squad-count">${_t('td.squad.count')} ${detail.squad.length} ${_t('td.squad.people')}</div>
         </div>
         <table class="squad-table">
-          <thead><tr><th>#</th><th>位置</th><th>球员</th><th>俱乐部</th><th>身价</th></tr></thead>
+          <thead><tr><th>#</th><th>${_t('td.position')}</th><th>${_t('td.player')}</th><th>${_t('td.club')}</th><th>${_t('td.value')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
@@ -1706,17 +1726,17 @@ const App = {
     if (simple) {
       return `
         <div class="squad-summary">
-          <div class="squad-total-val">💰 全队总身价 <strong>${simple.totalValue}</strong></div>
+          <div class="squad-total-val">${_t('td.squad.value')} <strong>${simple.totalValue}</strong></div>
         </div>
         <div class="simple-detail-card">
-          <div class="simple-label">⭐ 核心球员</div>
+          <div class="simple-label">${_t('td.star.player')}</div>
           <div class="simple-value">${simple.starPlayers}</div>
         </div>
-        <div class="detail-note">📝 更多大名单信息将在开赛前更新</div>
+        <div class="detail-note">${_t('td.more.info')}</div>
       `;
     }
 
-    return '<div class="detail-note">暂无大名单数据</div>';
+    return `<div class="detail-note">${_t('td.no.squad')}</div>`;
   },
 
   // ── Render: Injuries ──
@@ -1731,23 +1751,23 @@ const App = {
       `).join('');
 
       return `
-        <div class="injury-summary">🏥 伤停球员 <strong>${detail.injuries.length}</strong> 人</div>
+        <div class="injury-summary">${_t('td.injury.players')} <strong>${detail.injuries.length}</strong> ${_t('td.injury.count')}</div>
         <div class="injury-list">${rows}</div>
-        ${detail.injuries.some(i => i.status.includes('缺席')) ? '<div class="injury-warn">⚠️ 存在关键球员缺席，可能影响比赛表现</div>' : ''}
+        ${detail.injuries.some(i => i.status.includes('缺席')) ? `<div class="injury-warn">${_t('td.injury.warn')}</div>` : ''}
       `;
     }
 
     // Simple fallback
     if (simple) {
       return `
-        <div class="injury-summary">🏥 伤停情况</div>
+        <div class="injury-summary">${_t('td.injury.status')}</div>
         <div class="simple-detail-card">
           <div class="simple-value">${simple.injuries}</div>
         </div>
       `;
     }
 
-    return '<div class="injury-ok">✅ 当前无重大伤停，全员健康</div>';
+    return '<div class="' + 'injury-ok' + '">' + _t('td.no.injury') + '</div>';
   },
 
   // ── Render: World Cup Analysis ──
@@ -1766,39 +1786,39 @@ const App = {
     const rankScore = rank ? Math.max(0, (100 - rank.rank) / 100) * 10 : 5;
     const rankWidth = Math.min(100, rankScore * 10);
 
-    const analysis = detail?.analysis || simple?.analysis || '暂无分析数据';
+    const analysis = detail?.analysis || simple?.analysis || _t('td.no.analysis');
 
     return `
       <div class="analysis-metrics">
         <div class="am-row">
-          <span class="am-label">⚔️ 进攻</span>
+          <span class="am-label">⚔️ ${_t('tp.attack')}</span>
           <div class="am-bar-wrap"><div class="am-bar am-attack" style="width:${attackWidth}%"></div></div>
           <span class="am-val">${attack.toFixed(1)}</span>
         </div>
         <div class="am-row">
-          <span class="am-label">🛡️ 防守</span>
+          <span class="am-label">🛡️ ${_t('tp.defense')}</span>
           <div class="am-bar-wrap"><div class="am-bar am-defense" style="width:${defenseWidth}%"></div></div>
           <span class="am-val">${defense.toFixed(1)}</span>
         </div>
         <div class="am-row">
-          <span class="am-label">📈 状态</span>
+          <span class="am-label">📈 ${_t('td.form')}</span>
           <div class="am-bar-wrap"><div class="am-bar am-form" style="width:${formWidth}%"></div></div>
           <span class="am-val">${formScore.toFixed(1)}</span>
         </div>
         <div class="am-row">
-          <span class="am-label">🏅 排名</span>
+          <span class="am-label">🏅 ${_t('td.rank')}</span>
           <div class="am-bar-wrap"><div class="am-bar am-rank" style="width:${rankWidth}%"></div></div>
           <span class="am-val">${rank ? '#'+rank.rank : '-'}</span>
         </div>
       </div>
       <div class="analysis-quick-stats">
-        <div class="aqs-item"><span class="aqs-val">${stats.style || '-'}</span><span class="aqs-label">战术风格</span></div>
-        <div class="aqs-item"><span class="aqs-val">${stats.starPlayer || '-'}</span><span class="aqs-label">核心球员</span></div>
-        <div class="aqs-item"><span class="aqs-val">${form.map(f => this.formBadge(f)).join(' ')}</span><span class="aqs-label">近期走势</span></div>
-        <div class="aqs-item"><span class="aqs-val">${stats.worldcupWins}🏆</span><span class="aqs-label">世界杯冠军</span></div>
+        <div class="aqs-item"><span class="aqs-val">${stats.style || '-'}</span><span class="aqs-label">${_t('td.tactical.style')}</span></div>
+        <div class="aqs-item"><span class="aqs-val">${stats.starPlayer || '-'}</span><span class="aqs-label">${_t('td.star.player')}</span></div>
+        <div class="aqs-item"><span class="aqs-val">${form.map(f => this.formBadge(f)).join(' ')}</span><span class="aqs-label">${_t('td.recent.trend')}</span></div>
+        <div class="aqs-item"><span class="aqs-val">${stats.worldcupWins}🏆</span><span class="aqs-label">${_t('td.wc.championships')}</span></div>
       </div>
       <div class="analysis-text">
-        <div class="at-title">📋 ${zh}世界杯前景分析</div>
+        <div class="at-title">📋 ${zh}${_t('td.wc.prospect')}</div>
         <div class="at-body">${analysis}</div>
       </div>
     `;
@@ -1840,13 +1860,13 @@ const App = {
     if (thisWC.length > 0) {
       thisWCHtml = `
         <div class="history-section">
-          <div class="hs-title">🎯 本届世界杯已赛</div>
+          <div class="hs-title">🎯 ${_t('td.this.wc.played')}</div>
           ${thisWC.map(r => {
             const isHome = r.home === teamName;
             const won = isHome ? r.hg > r.ag : r.ag > r.hg;
             const drew = r.hg === r.ag;
             const resultClass = won ? 'h-win' : drew ? 'h-draw' : 'h-loss';
-            const resultText = won ? '胜' : drew ? '平' : '负';
+            const resultText = won ? _t('common.win.short') : drew ? _t('common.draw.short') : _t('common.loss.short');
             const opp = isHome ? r.away : r.home;
             const oppZh = this.zhName(opp);
             const oppE = this.emoji(opp);
@@ -1854,7 +1874,7 @@ const App = {
             return `<div class="h-match ${resultClass}">
               <span class="hm-result">${resultText}</span>
               <span class="hm-teams">${emoji} ${zh} ${r.hg} - ${r.ag} ${oppZh} ${oppE}</span>
-              <span class="hm-info">${r.group}组 · ${r.date} ${dualTime}</span>
+              <span class="hm-info">${this.groupLabel(r.group)} · ${r.date} ${dualTime}</span>
             </div>`;
           }).join('')}
         </div>`;
@@ -1864,7 +1884,7 @@ const App = {
     if (upcoming.length > 0) {
       upcomingHtml = `
         <div class="history-section">
-          <div class="hs-title">📅 本届世界杯待赛</div>
+          <div class="hs-title">📅 ${_t('td.this.wc.upcoming')}</div>
           ${upcoming.map(m => {
             const isHome = m.home === teamName;
             const opp = isHome ? m.away : m.home;
@@ -1884,9 +1904,9 @@ const App = {
     if (h2hRecords.length > 0) {
       h2hHtml = `
         <div class="history-section">
-          <div class="hs-title">⚔️ 世界杯历史对战记录</div>
+          <div class="hs-title">${_t('td.h2h.records')}</div>
           <table class="h2h-detail-table">
-            <thead><tr><th>对手</th><th>场次</th><th>胜</th><th>平</th><th>负</th><th>胜率</th></tr></thead>
+            <thead><tr><th>${_t('td.h2h.opponent')}</th><th>${_t('td.h2h.matches')}</th><th>${_t('common.win.short')}</th><th>${_t('common.draw.short')}</th><th>${_t('common.loss.short')}</th><th>${_t('td.h2h.winrate')}</th></tr></thead>
             <tbody>
               ${h2hRecords.map(r => {
                 const oppZh = this.zhName(r.opponent);
@@ -1909,17 +1929,17 @@ const App = {
 
     return `
       <div class="history-overview">
-        <div class="ho-card"><div class="ho-val">${wcStats}</div><div class="ho-label">世界杯总场次</div></div>
-        <div class="ho-card"><div class="ho-val" style="color:#22c55e">${wcGF}</div><div class="ho-label">总进球</div></div>
-        <div class="ho-card"><div class="ho-val" style="color:#dc2626">${wcGA}</div><div class="ho-label">总失球</div></div>
-        <div class="ho-card"><div class="ho-val">${avgGF.toFixed(2)}</div><div class="ho-label">场均进球</div></div>
-        <div class="ho-card"><div class="ho-val">${avgGA.toFixed(2)}</div><div class="ho-label">场均失球</div></div>
-        <div class="ho-card"><div class="ho-val" style="color:#f59e0b">${stats.worldcupWins}🏆</div><div class="ho-label">冠军次数</div></div>
+        <div class="ho-card"><div class="ho-val">${wcStats}</div><div class="ho-label">${_t('td.wc.total.matches')}</div></div>
+        <div class="ho-card"><div class="ho-val" style="color:#22c55e">${wcGF}</div><div class="ho-label">${_t('td.wc.total.goals')}</div></div>
+        <div class="ho-card"><div class="ho-val" style="color:#dc2626">${wcGA}</div><div class="ho-label">${_t('td.wc.total.conceded')}</div></div>
+        <div class="ho-card"><div class="ho-val">${avgGF.toFixed(2)}</div><div class="ho-label">${_t('td.wc.avg.goals')}</div></div>
+        <div class="ho-card"><div class="ho-val">${avgGA.toFixed(2)}</div><div class="ho-label">${_t('td.wc.avg.conceded')}</div></div>
+        <div class="ho-card"><div class="ho-val" style="color:#f59e0b">${stats.worldcupWins}🏆</div><div class="ho-label">${_t('td.wc.trophies')}</div></div>
       </div>
       ${thisWCHtml}
       ${upcomingHtml}
       ${h2hHtml}
-      ${h2hRecords.length === 0 && thisWC.length === 0 ? '<div class="detail-note">暂无历史对战数据</div>' : ''}
+      ${h2hRecords.length === 0 && thisWC.length === 0 ? '<div class="detail-note">' + _t('td.no.history') + '</div>' : ''}
     `;
   },
 
@@ -1964,8 +1984,20 @@ const App = {
     const keyStatus = document.getElementById('dsKeyStatus');
 
     DeepSeekEngine.loadApiKey();
-    const readyMsg = I18n.lang === 'zh' ? '✅ AI 分析助手就绪 · 点击生成提示词，一键跳转AI平台' : I18n.lang === 'es' ? '✅ Asistente IA listo · Genera prompt y salta a plataforma IA' : I18n.lang === 'fr' ? '✅ Assistant IA prêt · Générez prompt et allez à plateforme IA' : '✅ AI assistant ready · Generate prompt and jump to AI platform';
+    const readyMsg = _t('ds.ready.msg');
     if (keyStatus) this._showKeyStatus(keyStatus, 'ok', readyMsg);
+
+    // 语言切换时更新状态文字
+    document.removeEventListener('langchange', this._dsLangHandler);
+    this._dsLangHandler = () => {
+      const el = document.getElementById('dsKeyStatus');
+      if (el && el.classList.contains('ok')) el.textContent = _t('ds.ready.msg');
+      const btnContent = document.getElementById('dsAnalyzeBtnContent');
+      const btn = document.getElementById('dsAnalyzeBtn');
+      if (btnContent) btnContent.innerHTML = _t('ds.generate.btn');
+      if (btn && btn.textContent && btn.textContent.includes('✅')) btn.textContent = _t('ds.copied');
+    };
+    document.addEventListener('langchange', this._dsLangHandler);
 
     // 初始化AI平台跳转按钮
     this._renderAIJumpButtons();
@@ -1980,16 +2012,6 @@ const App = {
     }
   },
 
-  _updateKeyStatus(key, statusEl) {
-    if (!statusEl) return;
-    if (!key) { statusEl.className = 'ds-key-status'; return; }
-    if (key.startsWith('sk-') && key.length >= 20) {
-      this._showKeyStatus(statusEl, 'ok', `✅ Key 已配置：${key.substring(0,8)}${'*'.repeat(8)}...`);
-    } else {
-      this._showKeyStatus(statusEl, 'warn', '⚠️ Key 格式似乎不正确');
-    }
-  },
-
   _showKeyStatus(el, type, msg) {
     if (!el) return;
     el.className = `ds-key-status ${type}`;
@@ -1998,8 +2020,7 @@ const App = {
 
   async _runDeepSeekAnalysis() {
     if (!this._currentPredResult) {
-      const msg = I18n.lang === 'zh' ? '请先选择今日比赛！' : I18n.lang === 'es' ? '¡Selecciona un partido primero!' : I18n.lang === 'fr' ? 'Sélectionnez un match d\'abord !' : 'Please select a match first!';
-      alert(msg);
+      alert(_t('ds.select.first'));
       return;
     }
 
@@ -2012,7 +2033,7 @@ const App = {
 
     // 短暂加载动画（Prompt 生成是同步的，给用户视觉反馈）
     analyzeBtn.disabled = true;
-    const loadingText = I18n.lang === 'zh' ? '✨ 正在生成提示词...' : I18n.lang === 'es' ? '✨ Generando prompt...' : I18n.lang === 'fr' ? '✨ Génération du prompt...' : '✨ Generating prompt...';
+    const loadingText = _t('ds.generating');
     btnContent.innerHTML = `<div class="ds-loading-dots"><span></span><span></span><span></span></div> ${loadingText}`;
 
     // 获取赛前情报（伤停/阵容/新闻）
@@ -2052,13 +2073,13 @@ const App = {
 
     // 更新按钮
     analyzeBtn.disabled = false;
-    const refreshText = I18n.lang === 'zh' ? '🔄 重新生成提示词' : I18n.lang === 'es' ? '🔄 Regenerar prompt' : I18n.lang === 'fr' ? '🔄 Régénérer le prompt' : '🔄 Regenerate prompt';
+    const refreshText = _t('ds.regenerate');
     btnContent.innerHTML = refreshText;
 
     // 更新徽章
     const badge = document.getElementById('dsModelBadge');
     if (badge) {
-      badge.textContent = t('dual.ready');
+      badge.textContent = _t('dual.ready');
       badge.style.background = 'rgba(34,197,94,0.25)';
     }
   },
@@ -2100,7 +2121,7 @@ const App = {
     try {
       await navigator.clipboard.writeText(text);
       if (btn) {
-        btn.textContent = I18n.lang === 'zh' ? '✅ 已复制' : I18n.lang === 'es' ? '✅ Copiado' : I18n.lang === 'fr' ? '✅ Copié' : '✅ Copied';
+        btn.textContent = _t('ds.copied');
         btn.classList.add('copied');
         setTimeout(() => {
           btn.textContent = originalText;
@@ -2146,22 +2167,6 @@ const App = {
     `).join('');
   },
 
-  // ── 从AI结果中提取比分（保留用于本地分析）──
-  _extractScore(content) {
-    if (!content) return null;
-    const regexes = [
-      /首选比分[：:]\s*\*{0,2}(\d+)\s*[:：]\s*(\d+)\*{0,2}/,
-      /比分[：:]\s*\*{0,2}(\d+)\s*[:：]\s*(\d+)\*{0,2}/,
-      /预测.*?(\d+)\s*[:：]\s*(\d+)/,
-      /(\d+)\s*[:：]\s*(\d+)/
-    ];
-    for (const regex of regexes) {
-      const match = content.match(regex);
-      if (match) return `${match[1]}:${match[2]}`;
-    }
-    return null;
-  },
-
   // ── Render + Auto Generate Prompt ──
   renderPredictionResultAndDS(result, showLottery, weather, matchInfo) {
     this._currentPredResult = result;
@@ -2173,7 +2178,7 @@ const App = {
     const btnContent = document.getElementById('dsAnalyzeBtnContent');
     if (promptArea) promptArea.style.display = 'none';
     if (localSection) localSection.style.display = 'none';
-    if (btnContent) btnContent.innerHTML = I18n.lang === 'zh' ? '✨ 生成AI分析提示词' : I18n.lang === 'es' ? '✨ Generar prompt IA' : I18n.lang === 'fr' ? '✨ Générer prompt IA' : '✨ Generate AI prompt';
+    if (btnContent) btnContent.innerHTML = _t('ds.generate.btn');
 
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     if (analyzeBtn) analyzeBtn.disabled = false;
@@ -2185,3 +2190,5 @@ const App = {
     }, 600);
   }
 };
+
+// 初始化由 index.html 脚本加载完成后统一触发（见 index.html loadNext 回调）

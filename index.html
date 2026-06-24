@@ -49,12 +49,12 @@
   <!-- Navigation Tabs -->
   <nav class="main-nav">
     <div class="nav-container">
-      <button class="nav-tab active" data-tab="predict" data-i18n="nav.predict">🤖 AI 预测</button>
-      <button class="nav-tab" data-tab="schedule" data-i18n="nav.schedule">📅 赛程表</button>
-      <button class="nav-tab" data-tab="results" data-i18n="nav.results">📊 已赛结果</button>
-      <button class="nav-tab" data-tab="groups" data-i18n="nav.groups">🏅 小组积分</button>
-      <button class="nav-tab" data-tab="bracket" data-i18n="nav.bracket">🏆 淘汰赛</button>
-      <button class="nav-tab" data-tab="teams" data-i18n="nav.teams">⚡ 球队实力</button>
+      <button class="nav-tab active" data-tab="predict" data-i18n="nav.predict" onclick="App.switchTab('predict')">🤖 AI 预测</button>
+      <button class="nav-tab" data-tab="schedule" data-i18n="nav.schedule" onclick="App.switchTab('schedule')">📅 赛程表</button>
+      <button class="nav-tab" data-tab="results" data-i18n="nav.results" onclick="App.switchTab('results')">📊 已赛结果</button>
+      <button class="nav-tab" data-tab="groups" data-i18n="nav.groups" onclick="App.switchTab('groups')">🏅 小组积分</button>
+      <button class="nav-tab" data-tab="bracket" data-i18n="nav.bracket" onclick="App.switchTab('bracket')">🏆 淘汰赛</button>
+      <button class="nav-tab" data-tab="teams" data-i18n="nav.teams" onclick="App.switchTab('teams')">⚡ 球队实力</button>
     </div>
   </nav>
 
@@ -235,6 +235,7 @@
         <h2 data-i18n="results.header">📊 已赛结果</h2>
         <p data-i18n="results.desc">截止目前的全部比赛结果（6月11日起）</p>
       </div>
+      <div id="accuracyBanner"></div>
       <div class="results-grid" id="resultsGrid"></div>
     </section>
 
@@ -298,6 +299,10 @@
     function loadNext() {
       if (i >= scripts.length) {
         console.log('✅ All scripts loaded');
+        // 所有脚本加载完毕后初始化 App
+        if (typeof App !== 'undefined' && typeof App.init === 'function') {
+          App.init();
+        }
         return;
       }
       const s = document.createElement('script');

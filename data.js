@@ -128,7 +128,7 @@ const WC2026_DATA = {
     }
   },
 
-  // ── All team emojis map ──
+  // ── All team emojis map (fallback emoji) ──
   teamEmoji: {
     "Argentina":    "🇦🇷", "Spain":        "🇪🇸", "France":       "🇫🇷",
     "England":      "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Portugal":     "🇵🇹", "Brazil":       "🇧🇷",
@@ -145,8 +145,27 @@ const WC2026_DATA = {
     "Uzbekistan":   "🇺🇿", "Jordan":       "🇯🇴", "Saudi Arabia": "🇸🇦",
     "Cape Verde":   "🇨🇻", "Ghana":        "🇬🇭", "New Zealand":  "🇳🇿",
     "South Africa": "🇿🇦", "Bosnia":       "🇧🇦", "Qatar":        "🇶🇦",
-    "Haiti":        "🇭🇹", "Curacao":      "🇨🇼", "Iraq":         "🇮🇶",
-    "Senegal":      "🇸🇳"
+    "Haiti":        "🇭🇹", "Curacao":      "🇨🇼", "Iraq":         "🇮🇶"
+  },
+
+  // ── ISO 2-letter country codes (for flag images via flagcdn.com) ──
+  teamISO: {
+    "Argentina":      "ar", "Spain":          "es", "France":         "fr",
+    "England":        "gb-eng", "Portugal":   "pt", "Brazil":         "br",
+    "Morocco":        "ma", "Netherlands":    "nl", "Belgium":        "be",
+    "Germany":        "de", "Croatia":        "hr", "Colombia":       "co",
+    "Mexico":         "mx", "Senegal":        "sn", "Uruguay":        "uy",
+    "USA":            "us", "Japan":          "jp", "Switzerland":    "ch",
+    "Iran":           "ir", "Turkey":         "tr", "Ecuador":        "ec",
+    "Austria":        "at", "South Korea":    "kr", "Australia":      "au",
+    "Algeria":        "dz", "Egypt":          "eg", "Canada":         "ca",
+    "Norway":         "no", "Ivory Coast":    "ci", "Panama":         "pa",
+    "Sweden":         "se", "Czech Republic": "cz", "Paraguay":       "py",
+    "Scotland":       "gb-sct", "Tunisia":    "tn", "DR Congo":       "cd",
+    "Uzbekistan":     "uz", "Jordan":         "jo", "Saudi Arabia":   "sa",
+    "Cape Verde":     "cv", "Ghana":          "gh", "New Zealand":    "nz",
+    "South Africa":   "za", "Bosnia":         "ba", "Qatar":          "qa",
+    "Haiti":          "ht", "Curacao":        "cw", "Iraq":           "iq"
   },
 
   // ── Venue Timezone & Country Mapping (2026 World Cup) ──
@@ -236,18 +255,17 @@ const WC2026_DATA = {
     { date:"6月22日", time:"09:00", group:"G", home:"New Zealand",  away:"Egypt",        hg:1, ag:3, venue:"BC Place 温哥华" },
     { date:"6月23日", time:"01:00", group:"J", home:"Argentina",    away:"Austria",      hg:2, ag:0, venue:"堪萨斯城体育场" },
     { date:"6月23日", time:"05:00", group:"I", home:"France",       away:"Iraq",         hg:3, ag:0, venue:"MetLife 体育场" },
-    { date:"6月23日", time:"08:00", group:"I", home:"Norway",       away:"Senegal",      hg:3, ag:2, venue:"吉利特体育场" }
+    { date:"6月23日", time:"08:00", group:"I", home:"Norway",       away:"Senegal",      hg:3, ag:2, venue:"吉利特体育场" },
+    // --- 第三轮（6月23-24日 已完赛，API确认 2026-06-24 11:30）---
+    { date:"6月23日", time:"11:00", group:"J", home:"Jordan",       away:"Algeria",      hg:1, ag:2, venue:"旧金山湾区体育场" },
+    { date:"6月24日", time:"01:00", group:"K", home:"Portugal",     away:"Uzbekistan",   hg:5, ag:0, venue:"阿兹特卡球场" },
+    { date:"6月24日", time:"04:00", group:"L", home:"England",      away:"Ghana",        hg:0, ag:0, venue:"AT&T 体育场 达拉斯" },
+    { date:"6月24日", time:"07:00", group:"L", home:"Panama",       away:"Croatia",      hg:0, ag:1, venue:"BMO Field 多伦多" },
+    { date:"6月24日", time:"10:00", group:"K", home:"Colombia",     away:"DR Congo",     hg:1, ag:0, venue:"休斯顿 NRG" }
   ],
 
   // ── Upcoming Matches with Beijing Time ──
   upcomingMatches: [
-    // June 23 — 进行中
-    { date:"6月23日", time:"11:00", group:"J", home:"Jordan",        away:"Algeria",     venue:"旧金山湾区体育场", liveScore:{hg:1,ag:0,min:"--"}, status:"live" },
-    // June 24
-    { date:"6月24日", time:"01:00", group:"K", home:"Portugal",      away:"Uzbekistan",  venue:"阿兹特卡球场" },
-    { date:"6月24日", time:"04:00", group:"L", home:"England",       away:"Ghana",       venue:"AT&T 体育场 达拉斯" },
-    { date:"6月24日", time:"07:00", group:"L", home:"Panama",        away:"Croatia",     venue:"BMO Field 多伦多" },
-    { date:"6月24日", time:"10:00", group:"K", home:"Colombia",      away:"DR Congo",    venue:"休斯顿 NRG" },
     // June 25 — 同组同时开球
     { date:"6月25日", time:"03:00", group:"B", home:"Switzerland",   away:"Canada",      venue:"洛杉矶体育场" },
     { date:"6月25日", time:"03:00", group:"B", home:"Bosnia",        away:"Qatar",       venue:"西雅图体育场" },
@@ -689,6 +707,15 @@ const WC2026_DATA = {
       style: "中路配合",
       starPlayer: "贾苏尔·雅肖多",
       recentForm: ["W","D","W","L","W"]
+    },
+    "Sweden": {
+      attack: 7.0, defense: 6.8, form: 6.8,
+      worldcupWins: 0, worldcupFinals: 0,
+      wc_goals_scored: 44, wc_goals_conceded: 62, wc_matches: 50,
+      avgGoalsScored: 0.88, avgGoalsConceded: 1.24,
+      style: "身体对抗 + 定位球",
+      starPlayer: "易卜拉欣·德亚斯 / 亚历山大·伊萨克",
+      recentForm: ["D","W","L","W","D"]
     }
   },
 
