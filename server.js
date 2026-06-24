@@ -7,10 +7,18 @@ const url = require('url');
 const PORT = process.env.PORT || 3000;
 
 // ── AI 配置（通过 Railway 环境变量注入）──
-// 优先级: OPENROUTER_API_KEY > MIMO_API_KEY
-const AI_API_KEY    = process.env.OPENROUTER_API_KEY || process.env.MIMO_API_KEY || '';
-const AI_ENDPOINT   = process.env.AI_ENDPOINT   || 'https://openrouter.ai/api/v1/chat/completions';
-const AI_MODEL      = process.env.AI_MODEL      || 'anthropic/claude-opus-4';
+// 优先级: MIMO_API_KEY（国内可用，默认首选）> OPENROUTER_API_KEY
+const _hasMimoKey   = !!process.env.MIMO_API_KEY;
+const _hasORKey     = !!process.env.OPENROUTER_API_KEY;
+const AI_API_KEY    = process.env.MIMO_API_KEY || process.env.OPENROUTER_API_KEY || '';
+
+// 根据可用 Key 自动选择默认端点和模型
+const AI_ENDPOINT   = process.env.AI_ENDPOINT || (_hasMimoKey
+  ? 'https://api.mimo.xiaomi.com/v1/chat/completions'
+  : 'https://openrouter.ai/api/v1/chat/completions');
+const AI_MODEL      = process.env.AI_MODEL || (_hasMimoKey
+  ? 'prompt-generator-lite'
+  : 'anthropic/claude-opus-4');
 const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '60000', 10);
 
 // ── Football-Data.org 配置 ──
@@ -421,8 +429,8 @@ const server = http.createServer(async (req, res) => {
 
   // 服务状态诊断端点（仅返回布尔值，不暴露密钥）
   if (req.url === '/api/status') {
-    const aiSource = process.env.OPENROUTER_API_KEY ? 'OPENROUTER_API_KEY'
-                    : process.env.MIMO_API_KEY ? 'MIMO_API_KEY'
+    const aiSource = _hasMimoKey ? 'MIMO_API_KEY'
+                    : _hasORKey ? 'OPENROUTER_API_KEY'
                     : 'NONE';
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
@@ -472,6 +480,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ WC2026 Server running on port ${PORT}`);
-  console.log(`   AI Endpoint: ${AI_ENDPOINT} | Model: ${AI_MODEL} | Key: ${!!AI_API_KEY}`);
+  console.log(`   AI: ${AI_ENDPOINT} | Model: ${AI_MODEL} | Key: ${!!AI_API_KEY} (source: ${_hasMimoKey ? 'Mimo' : _hasORKey ? 'OpenRouter' : 'None'})`);
   console.log(`   Football-Data: v4 | Key: ${!!FD_API_KEY} | Cache TTL: ${FD_CACHE_TTL/1000}s`);
 });
