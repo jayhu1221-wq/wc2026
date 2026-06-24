@@ -136,6 +136,7 @@ const I18n = {
       'footer.data': '📊 数据来源：FIFA 官方、历史赛事记录、国际足联排名（2026年6月更新） · 🌤️ 天气：Open-Meteo',
       'footer.ai': '🤖 AI 预测仅供参考，基于统计模型 + 蒙特卡洛模拟 + Claude Opus 4.7 大模型分析 · ⚠️ 理性投注 切勿沉迷',
       'footer.copy': '2026 FIFA World Cup AI Predictor · 服务器代理实时数据 · API密钥安全隐藏',
+      'footer.dev': '开发者: huzhenjie',
 
       // Common UI
       'common.kickoff': '即将开球',
@@ -474,6 +475,7 @@ const I18n = {
       'footer.data': '📊 Data: FIFA official, historical records, FIFA rankings (June 2026) · 🌤️ Weather: Open-Meteo',
       'footer.ai': '🤖 AI predictions for reference only · Statistical model + Monte Carlo + Claude Opus 4.7 · ⚠️ Bet responsibly',
       'footer.copy': '2026 FIFA World Cup AI Predictor · Server proxy real-time data · API keys secured',
+      'footer.dev': 'Developer: huzhenjie',
 
       'common.kickoff': 'Kickoff Soon',
       'common.today': 'Today',
@@ -803,6 +805,7 @@ const I18n = {
       'footer.data': '📊 Datos: FIFA oficial, registros históricos, ranking FIFA (junio 2026) · 🌤️ Clima: Open-Meteo',
       'footer.ai': '🤖 Predicciones IA solo como referencia · Modelo estadístico + Monte Carlo + Claude Opus 4.7 · ⚠️ Apuesta con responsabilidad',
       'footer.copy': '2026 FIFA World Cup AI Predictor · Datos en tiempo real vía proxy · Claves API seguras',
+      'footer.dev': 'Desarrollador: huzhenjie',
 
       'common.kickoff': 'Pronto el Inicio',
       'common.today': 'Hoy',
@@ -1132,6 +1135,7 @@ const I18n = {
       'footer.data': '📊 Données: FIFA officiel, records historiques, classement FIFA (juin 2026) · 🌤️ Météo: Open-Meteo',
       'footer.ai': '🤖 Prédictions IA à titre indicatif · Modèle statistique + Monte Carlo + Claude Opus 4.7 · ⚠️ Pariez avec responsabilité',
       'footer.copy': '2026 FIFA World Cup AI Predictor · Données temps réel via proxy · Clés API sécurisées',
+      'footer.dev': 'Développeur: huzhenjie',
 
       'common.kickoff': 'Coup d\'envoi imminent',
       'common.today': "Aujourd'hui",
