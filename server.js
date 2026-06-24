@@ -419,6 +419,18 @@ const server = http.createServer(async (req, res) => {
     return handleAnalyze(req, res);
   }
 
+  // 服务状态诊断端点（仅返回布尔值，不暴露密钥）
+  if (req.url === '/api/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      status: 'ok',
+      services: {
+        ai: { configured: !!AI_API_KEY, endpoint: AI_ENDPOINT, model: AI_MODEL },
+        footballData: { configured: !!FD_API_KEY, version: 'v4', cacheTTL: `${FD_CACHE_TTL/1000}s` }
+      }
+    }));
+  }
+
   // Football-Data.org 代理端点（通用路径）
   if (req.url.startsWith('/api/fd/')) {
     return handleFootballData(req, res);
