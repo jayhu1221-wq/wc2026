@@ -155,6 +155,28 @@ async function handleAnalyze(req, res) {
   }
 
   // ── 按优先级尝试各 Provider，自动降级 ──
+  // 用户可通过 body.provider 指定优先使用的 Provider
+  const requestedProvider = body.provider || '';
+  let providersToTry = AI_PROVIDERS;
+
+  if (requestedProvider && requestedProvider !== 'auto') {
+    // 用户指定了特定 Provider，将其放在首位（其余仍作为降级备选）
+    const matched = AI_PROVIDERS.filter(p =>
+      p.name.toLowerCase().includes(requestedProvider.toLowerCase())
+    );
+    const others = AI_PROVIDERS.filter(p =>
+      !p.name.toLowerCase().includes(requestedProvider.toLowerCase())
+    );
+    providersToTry = matched.concat(others);
+
+    if (matched.length === 0) {
+      console.log(`[AI Proxy] 用户指定的 Provider "${requestedProvider}" 未找到，使用默认顺序`);
+      providersToTry = AI_PROVIDERS;
+    } else {
+      console.log(`[AI Proxy] 用户指定 Provider: ${matched[0].name}，降级顺序: ${others.map(o => o.name).join(', ') || '无'}`);
+    }
+  }
+
   const postData = JSON.stringify({
     messages: [
       { role: 'system', content: '你是世界顶级足球分析师，精通FIFA世界杯赛事分析。请基于提供的数据给出专业、准确的分析和比分预测。回答使用中文。' },
@@ -164,8 +186,8 @@ async function handleAnalyze(req, res) {
     max_tokens: 2000
   });
 
-  for (let i = 0; i < AI_PROVIDERS.length; i++) {
-    const provider = AI_PROVIDERS[i];
+  for (let i = 0; i < providersToTry.length; i++) {
+    const provider = providersToTry[i];
     
     try {
       const result = await _callAIProvider(provider, postData, promptText.length);
@@ -205,8 +227,8 @@ async function handleAnalyze(req, res) {
       }
 
       // 其他 HTTP 错误：尝试下一个 Provider
-      if (i < AI_PROVIDERS.length - 1) {
-        console.log(`[AI Proxy] ${provider.name} 失败(HTTP ${result.status}), 降级到 ${AI_PROVIDERS[i+1].name}...`);
+      if (i < providersToTry.length - 1) {
+        console.log(`[AI Proxy] ${provider.name} 失败(HTTP ${result.status}), 降级到 ${providersToTry[i+1].name}...`);
         continue;
       }
 
@@ -232,8 +254,8 @@ async function handleAnalyze(req, res) {
       console.error(`[AI Proxy] ${provider.name} 调用异常: [${err.code || 'ERR'}] ${err.message}`);
 
       // 连接类错误 → 自动降级到下一个 Provider
-      if (isConnectionErr && i < AI_PROVIDERS.length - 1) {
-        console.log(`[AI Proxy] ${provider.name} 连接失败, 自动降级 → ${AI_PROVIDERS[i+1].name}`);
+      if (isConnectionErr && i < providersToTry.length - 1) {
+        console.log(`[AI Proxy] ${provider.name} 连接失败, 自动降级 → ${providersToTry[i+1].name}`);
         continue;
       }
 

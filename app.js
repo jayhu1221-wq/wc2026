@@ -2002,6 +2002,9 @@ const App = {
     // 初始化AI平台跳转按钮
     this._renderAIJumpButtons();
 
+    // 加载服务端可用的大模型列表
+    this._loadAIProviders();
+
     // 默认 prompt 类型
     this._promptType = 'full';
 
@@ -2198,6 +2201,67 @@ const App = {
   // =============================================
 
   _analysisMode: 'prompt',   // 'prompt' | 'auto'
+  _selectedProvider: 'auto', // 'auto' | provider name
+  _aiProviders: [],          // cached provider list from /api/status
+
+  // ── 从服务端加载可用的大模型列表 ──
+  async _loadAIProviders() {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      const providers = data.services?.ai?.providers || [];
+      this._aiProviders = providers;
+
+      const container = document.getElementById('aiProviderButtons');
+      const wrapper = document.getElementById('aiProviderSelector');
+      if (!container || !wrapper) return;
+
+      if (providers.length === 0) {
+        wrapper.style.display = 'none';
+        return;
+      }
+
+      wrapper.style.display = 'block';
+
+      // "自动选择" 按钮（默认选中）
+      let html = `<button class="ai-provider-btn auto active" onclick="App._selectProvider('auto')">
+        <span class="provider-icon">⚡</span>
+        <span>${_t('auto.model.auto')}</span>
+      </button>`;
+
+      // 各 Provider 按钮
+      providers.forEach(p => {
+        const icon = p.name.toLowerCase().includes('mimo') ? '🌟'
+                   : p.name.toLowerCase().includes('openrouter') ? '🌐'
+                   : '🤖';
+        const statusClass = p.isGlobal ? '' : 'cn';
+        const statusText = p.isGlobal ? _t('auto.model.global') : _t('auto.model.cn');
+        html += `<button class="ai-provider-btn" onclick="App._selectProvider('${p.name}')" title="${p.endpoint}">
+          <span class="provider-icon">${icon}</span>
+          <span>${p.name}</span>
+          <span class="provider-status ${statusClass}">${statusText}</span>
+        </button>`;
+      });
+
+      container.innerHTML = html;
+    } catch(e) {
+      console.warn('[AI] 加载大模型列表失败:', e.message);
+    }
+  },
+
+  // ── 选择大模型 Provider ──
+  _selectProvider(name) {
+    this._selectedProvider = name;
+    document.querySelectorAll('.ai-provider-btn').forEach(btn => btn.classList.remove('active'));
+    // 通过 onclick 属性匹配
+    const btns = document.querySelectorAll('.ai-provider-btn');
+    btns.forEach(btn => {
+      if (btn.getAttribute('onclick')?.includes(`'${name}'`)) {
+        btn.classList.add('active');
+      }
+    });
+    console.log('[AI] 已选择 Provider:', name);
+  },
 
   // ── 切换分析模式 ──
   _switchAnalysisMode(mode) {
@@ -2261,12 +2325,15 @@ const App = {
         : AIEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
 
       // 调用后端 /api/analyze 端点（服务端已内嵌 API Key）
-      console.log('[AutoAnalysis] 调用 /api/analyze, prompt length:', promptText.length);
+      console.log('[AutoAnalysis] 调用 /api/analyze, provider:', this._selectedProvider, 'prompt length:', promptText.length);
       
       const apiRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText })
+        body: JSON.stringify({ 
+          prompt: promptText,
+          provider: this._selectedProvider || 'auto'
+        })
       });
 
       const result = await apiRes.json();

@@ -101,6 +101,10 @@ const I18n = {
       'dual.mode.prompt': '📋 复制提示词模式',
       'dual.mode.auto': '🤖 大模型自动分析',
       'auto.info': '点击下方按钮即可调用大模型进行深度分析 · API 已内置于服务器端，无需额外配置',
+      'auto.select.model': '选择大模型',
+      'auto.model.auto': '自动选择',
+      'auto.model.global': '全球',
+      'auto.model.cn': '国内',
       'dual.auto.result': '大模型分析结果',
 
       // Score distribution
@@ -449,6 +453,10 @@ const I18n = {
       'dual.mode.prompt': '📋 Copy Prompt Mode',
       'dual.mode.auto': '🤖 Auto AI Analysis',
       'auto.info': 'Click the button below to start AI deep analysis · API is built into the server, no configuration needed',
+      'auto.select.model': 'Select AI Model',
+      'auto.model.auto': 'Auto',
+      'auto.model.global': 'Global',
+      'auto.model.cn': 'CN Only',
       'dual.auto.result': 'AI Analysis Result',
 
       'schedule.header': '📅 Full Schedule',
@@ -779,6 +787,10 @@ const I18n = {
       'dual.mode.prompt': '📋 Modo Copiar Prompt',
       'dual.mode.auto': '🤖 Análisis IA Automático',
       'auto.info': 'Haz clic en el botón para iniciar el análisis profundo de IA · La API está integrada en el servidor, sin configuración',
+      'auto.select.model': 'Seleccionar Modelo IA',
+      'auto.model.auto': 'Auto',
+      'auto.model.global': 'Global',
+      'auto.model.cn': 'Solo CN',
       'dual.auto.result': 'Resultado del Análisis IA',
 
       'schedule.header': '📅 Calendario Completo',
@@ -1109,6 +1121,10 @@ const I18n = {
       'dual.mode.prompt': '📋 Mode Copier Prompt',
       'dual.mode.auto': '🤖 Analyse IA Automatique',
       'auto.info': 'Cliquez sur le bouton ci-dessous pour démarrer l\'analyse IA approfondie · L\'API est intégrée au serveur, aucune configuration requise',
+      'auto.select.model': 'Sélectionner le Modèle IA',
+      'auto.model.auto': 'Auto',
+      'auto.model.global': 'Global',
+      'auto.model.cn': 'CN uniquement',
       'dual.auto.result': 'Résultat de l\'Analyse IA',
 
       'schedule.header': '📅 Calendrier Complet',
