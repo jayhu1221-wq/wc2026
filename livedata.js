@@ -1,6 +1,6 @@
 // ============================================
 // livedata.js — 实时数据层 v2
-// 数据源：API-Football (RapidAPI) + football-data.org + DeepSeek AI 情报
+// 数据源：API-Football (RapidAPI) + football-data.org + AI 情报
 // 功能：实时比分 / 自动同步 / 伤停情报 / 数据回写
 // ============================================
 
@@ -557,7 +557,7 @@ const LiveData = {
   },
 
   // =============================================
-  //  4. 赛前情报（伤停/阵容/新闻）— 通过 DeepSeek AI 获取
+  //  4. 赛前情报（伤停/阵容/新闻）— 通过 AI 引擎获取
   // =============================================
 
   async fetchMatchIntelligence(homeTeam, awayTeam, matchDate) {
@@ -571,7 +571,7 @@ const LiveData = {
 
     const localIntel = this._getLocalInjuryData(homeTeam, awayTeam);
     let aiIntel = null;
-    if (typeof DeepSeekEngine !== 'undefined' && DeepSeekEngine.isConfigured()) {
+    if (typeof AIEngine !== 'undefined' && AIEngine.isConfigured()) {
       aiIntel = await this._fetchAIIntelligence(homeTeam, awayTeam);
     }
 

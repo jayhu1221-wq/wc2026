@@ -368,7 +368,7 @@ const I18n = {
       'common.local.data': '本地数据',
       'common.day.before': '前日',
       'common.day.after': '次日',
-      // ── DeepSeek Panel ──
+      // ── AI Panel ──
       'ds.ready.msg': '✅ AI 分析助手就绪 · 点击生成提示词，一键跳转AI平台',
       'ds.select.first': '请先选择今日比赛！',
       'ds.generating': '✨ 正在生成提示词...',
@@ -698,7 +698,7 @@ const I18n = {
       'common.local.data': 'Local data',
       'common.day.before': 'Previous day',
       'common.day.after': 'Next day',
-      // ── DeepSeek Panel ──
+      // ── AI Panel ──
       'ds.ready.msg': '✅ AI assistant ready · Generate prompt and jump to AI platform',
       'ds.select.first': 'Please select a match first!',
       'ds.generating': '✨ Generating prompt...',
@@ -1028,7 +1028,7 @@ const I18n = {
       'common.local.data': 'Datos locales',
       'common.day.before': 'Día anterior',
       'common.day.after': 'Día siguiente',
-      // ── DeepSeek Panel ──
+      // ── AI Panel ──
       'ds.ready.msg': '✅ Asistente IA listo · Genera prompt y salta a plataforma IA',
       'ds.select.first': '¡Selecciona un partido primero!',
       'ds.generating': '✨ Generando prompt...',
@@ -1357,7 +1357,7 @@ const I18n = {
       'common.local.data': 'Données locales',
       'common.day.before': 'Jour précédent',
       'common.day.after': 'Jour suivant',
-      // ── DeepSeek Panel ──
+      // ── AI Panel ──
       'ds.ready.msg': '✅ Assistant IA prêt · Générez prompt et allez à plateforme IA',
       'ds.select.first': 'Sélectionnez un match d\'abord !',
       'ds.generating': '✨ Génération du prompt...',

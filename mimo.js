@@ -1,7 +1,7 @@
 // ============================================
 // mimo.js — AI 分析提示词生成器（简版）v4
 // 不再调用任何外部 API
-// 生成更简短的关键词导向 Prompt，与 deepseek.js 互补
+// 生成更简短的关键词导向 Prompt，与 ai-engine.js 互补
 // 保留 MimoEngine 对象名以兼容 app.js
 // ============================================
 
@@ -78,8 +78,8 @@ const MimoEngine = {
 
   // ── 格式化响应 ──
   formatResponse(content) {
-    if (typeof DeepSeekEngine !== 'undefined' && DeepSeekEngine.formatResponse) {
-      return DeepSeekEngine.formatResponse(content);
+    if (typeof AIEngine !== 'undefined' && AIEngine.formatResponse) {
+      return AIEngine.formatResponse(content);
     }
     return content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
   }

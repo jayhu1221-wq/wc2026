@@ -159,7 +159,7 @@ const App = {
 
     // 4. 初始化交互
     this.initFilters();
-    this.initDeepSeek();
+    this.initAI();
     this.initTeamSearch();
     this.startAutoRefresh();
     this.updateRefreshStatus();
@@ -176,7 +176,7 @@ const App = {
       this.renderGroups();
       this.renderBracket();
       this.renderTeamsPower();
-      this.initDeepSeek();
+      this.initAI();
     };
     document.addEventListener('langchange', this._langChangeHandler);
   },
@@ -581,7 +581,7 @@ const App = {
 
     // Fetch weather and render
     const weather = await WeatherModule.fetchWeather(m.venue);
-    this.renderPredictionResultAndDS(pred, true, weather, m);
+    this.renderPredictionResultAndAI(pred, true, weather, m);
 
     document.getElementById('predictionResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
@@ -1979,11 +1979,11 @@ const App = {
   },
 
   // ── AI Panel 初始化 ──
-  initDeepSeek() {
+  initAI() {
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     const keyStatus = document.getElementById('dsKeyStatus');
 
-    DeepSeekEngine.loadApiKey();
+    AIEngine.loadApiKey();
     const readyMsg = _t('ds.ready.msg');
     if (keyStatus) this._showKeyStatus(keyStatus, 'ok', readyMsg);
 
@@ -2007,7 +2007,7 @@ const App = {
 
     if (analyzeBtn) {
       analyzeBtn.addEventListener('click', async () => {
-        await this._runDeepSeekAnalysis();
+        await this._runAIAnalysis();
       });
     }
   },
@@ -2018,7 +2018,7 @@ const App = {
     el.textContent = msg;
   },
 
-  async _runDeepSeekAnalysis() {
+  async _runAIAnalysis() {
     if (!this._currentPredResult) {
       alert(_t('ds.select.first'));
       return;
@@ -2051,7 +2051,7 @@ const App = {
     if (this._promptType === 'lite' && typeof MimoEngine !== 'undefined') {
       promptText = MimoEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
     } else {
-      promptText = DeepSeekEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
+      promptText = AIEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
     }
 
     // 显示 Prompt 区域
@@ -2065,11 +2065,11 @@ const App = {
     this._renderKeywords(pred, homeZh, awayZh);
 
     // 生成本地统计分析作为参考
-    const localData = DeepSeekEngine.generateLocalAnalysis(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
+    const localData = AIEngine.generateLocalAnalysis(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
     const localSection = document.getElementById('localAnalysisSection');
     const localContent = document.getElementById('localAnalysisContent');
     if (localSection) localSection.style.display = 'block';
-    if (localContent) localContent.innerHTML = DeepSeekEngine.formatResponse(localData.content);
+    if (localContent) localContent.innerHTML = AIEngine.formatResponse(localData.content);
 
     // 更新按钮
     analyzeBtn.disabled = false;
@@ -2095,15 +2095,15 @@ const App = {
     }
     // 如果已有结果，重新生成
     if (this._currentPredResult && document.getElementById('promptResultArea')?.style.display === 'block') {
-      this._runDeepSeekAnalysis();
+      this._runAIAnalysis();
     }
   },
 
   // ── 渲染 AI 平台跳转按钮 ──
   _renderAIJumpButtons() {
     const container = document.getElementById('aiJumpButtons');
-    if (!container || typeof DeepSeekEngine === 'undefined') return;
-    const platforms = DeepSeekEngine.getAIPlatforms();
+    if (!container || typeof AIEngine === 'undefined') return;
+    const platforms = AIEngine.getAIPlatforms();
     container.innerHTML = platforms.map(p => `
       <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="ai-jump-btn" style="border-color:${p.color}40;" title="${p.name}">
         <span class="ai-jump-icon">${p.icon}</span>
@@ -2161,14 +2161,14 @@ const App = {
   _renderKeywords(pred, homeZh, awayZh) {
     const container = document.getElementById('keywordsList');
     if (!container) return;
-    const keywords = DeepSeekEngine.buildKeywords(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
+    const keywords = AIEngine.buildKeywords(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh);
     container.innerHTML = keywords.map(k => `
       <button class="keyword-chip" onclick="App._copyKeyword('${k.replace(/'/g, "\\'")}', this)">${k}</button>
     `).join('');
   },
 
   // ── Render + Auto Generate Prompt ──
-  renderPredictionResultAndDS(result, showLottery, weather, matchInfo) {
+  renderPredictionResultAndAI(result, showLottery, weather, matchInfo) {
     this._currentPredResult = result;
     this.renderPredictionResult(result, showLottery, weather, matchInfo);
 
@@ -2187,7 +2187,7 @@ const App = {
     if (this._analysisMode !== 'auto') {
       setTimeout(() => {
         const btn = document.getElementById('dsAnalyzeBtn');
-        if (btn && !btn.disabled) this._runDeepSeekAnalysis();
+        if (btn && !btn.disabled) this._runAIAnalysis();
       }, 600);
     }
   },
@@ -2258,7 +2258,7 @@ const App = {
       // 生成 Prompt（与复制提示词模式相同逻辑）
       const promptText = (this._promptType === 'lite' && typeof MimoEngine !== 'undefined')
         ? MimoEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence)
-        : DeepSeekEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
+        : AIEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
 
       // 调用后端 /api/analyze 端点（服务端已内嵌 API Key）
       console.log('[AutoAnalysis] 调用 /api/analyze, prompt length:', promptText.length);
@@ -2280,7 +2280,7 @@ const App = {
       if (!aiContent) throw new Error('大模型返回空结果');
 
       // 显示成功结果
-      if (contentDiv) contentDiv.innerHTML = DeepSeekEngine.formatResponse(aiContent);
+      if (contentDiv) contentDiv.innerHTML = AIEngine.formatResponse(aiContent);
       if (modelBadge) modelBadge.textContent = `Server · ${result.model || 'AI'}`;
       if (btnContent) btnContent.innerHTML = '🔄 重新分析';
 

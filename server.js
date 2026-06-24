@@ -7,9 +7,10 @@ const url = require('url');
 const PORT = process.env.PORT || 3000;
 
 // ── AI 配置（通过 Railway 环境变量注入）──
+// 默认使用 OpenRouter (Claude Opus)，可在 Railway 变量中覆盖
 const AI_API_KEY    = process.env.AI_API_KEY    || '';
-const AI_ENDPOINT   = process.env.AI_ENDPOINT   || 'https://api.deepseek.com/v1/chat/completions';
-const AI_MODEL      = process.env.AI_MODEL      || 'deepseek-chat';
+const AI_ENDPOINT   = process.env.AI_ENDPOINT   || 'https://openrouter.ai/api/v1/chat/completions';
+const AI_MODEL      = process.env.AI_MODEL      || 'anthropic/claude-opus-4';
 const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '60000', 10);
 
 // ── Football-Data.org 配置 ──
@@ -131,7 +132,10 @@ async function handleAnalyze(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${AI_API_KEY}`,
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        // OpenRouter 推荐头（其他平台会忽略）
+        'HTTP-Referer': 'https://wc2026.up.railway.app',
+        'X-Title': 'WC2026 Predictor'
       },
       timeout: AI_TIMEOUT_MS
     };

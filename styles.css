@@ -2488,8 +2488,8 @@ body {
 }
 .reason-text { font-size: 13px; line-height: 1.7; color: var(--text); }
 
-/* ==================== DEEPSEEK PANEL ==================== */
-.deepseek-panel {
+/* ==================== AI PANEL ==================== */
+.ai-panel {
   background: linear-gradient(135deg, rgba(100,20,180,0.15), rgba(50,10,120,0.20));
   border: 1px solid rgba(140,60,240,0.5);
   border-radius: 16px;
@@ -3549,7 +3549,7 @@ body {
   transition: all 0.3s ease;
 }
 
-.dual-model-box.deepseek-box {
+.dual-model-box.ai-box {
   background: rgba(139, 92, 246, 0.08);
   border-color: rgba(139, 92, 246, 0.2);
 }
@@ -3669,7 +3669,7 @@ body {
   font-weight: 600;
 }
 
-.dual-result-badge.deepseek-badge {
+.dual-result-badge.ai-badge {
   background: rgba(139, 92, 246, 0.2);
   color: #c4b5fd;
 }
