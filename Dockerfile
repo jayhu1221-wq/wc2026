@@ -1,10 +1,9 @@
 FROM node:20-alpine
 
-# Install serve (lightweight static file server that auto-detects $PORT)
-RUN npm install -g serve@14
-
 WORKDIR /app
 
 COPY *.html *.css *.js ./
 
-CMD ["serve", "-l", "3000", "."]
+# serve defaults to 5000, but we need $PORT from Railway
+# Use shell form so $PORT gets expanded
+CMD npx serve -l ${PORT:-3000} .
