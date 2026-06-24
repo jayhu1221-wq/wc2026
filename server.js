@@ -7,8 +7,8 @@ const url = require('url');
 const PORT = process.env.PORT || 3000;
 
 // ── AI 配置（通过 Railway 环境变量注入）──
-// 支持多种变量名：OPENROUTER_API_KEY > MIMO_API_KEY > AI_API_KEY
-const AI_API_KEY    = process.env.OPENROUTER_API_KEY || process.env.MIMO_API_KEY || process.env.AI_API_KEY || '';
+// 优先级: OPENROUTER_API_KEY > MIMO_API_KEY
+const AI_API_KEY    = process.env.OPENROUTER_API_KEY || process.env.MIMO_API_KEY || '';
 const AI_ENDPOINT   = process.env.AI_ENDPOINT   || 'https://openrouter.ai/api/v1/chat/completions';
 const AI_MODEL      = process.env.AI_MODEL      || 'anthropic/claude-opus-4';
 const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '60000', 10);
@@ -423,7 +423,6 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/api/status') {
     const aiSource = process.env.OPENROUTER_API_KEY ? 'OPENROUTER_API_KEY'
                     : process.env.MIMO_API_KEY ? 'MIMO_API_KEY'
-                    : process.env.AI_API_KEY ? 'AI_API_KEY'
                     : 'NONE';
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
