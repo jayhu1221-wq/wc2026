@@ -160,15 +160,35 @@
           </div>
           <div class="ds-key-status" id="dsKeyStatus"></div>
 
+          <!-- 分析模式切换：复制提示词 vs 大模型自动分析 -->
+          <div class="ds-mode-switcher">
+            <button class="ds-mode-btn active" id="dsModePrompt" onclick="App._switchAnalysisMode('prompt')" data-i18n="dual.mode.prompt">📋 复制提示词模式</button>
+            <button class="ds-mode-btn" id="dsModeAuto" onclick="App._switchAnalysisMode('auto')" data-i18n="dual.mode.auto">🤖 大模型自动分析</button>
+          </div>
+
           <!-- Prompt 类型切换 -->
-          <div class="prompt-type-switcher">
+          <div class="prompt-type-switcher" id="promptTypeSwitcher">
             <button class="prompt-type-btn active" id="promptTypeFull" onclick="App._switchPromptType('full')" data-i18n="dual.prompt.full">📋 完整分析版</button>
             <button class="prompt-type-btn" id="promptTypeLite" onclick="App._switchPromptType('lite')" data-i18n="dual.prompt.lite">⚡ 简洁速答版</button>
           </div>
 
-          <button class="ds-analyze-btn" id="dsAnalyzeBtn">
-            <span id="dsAnalyzeBtnContent" data-i18n="dual.btn">✨ 生成AI分析提示词</span>
-          </button>
+          <!-- 大模型自动分析：说明区 -->
+          <div class="auto-analysis-config" id="autoAnalysisConfig" style="display:none;">
+            <div class="auto-config-info">
+              <span class="auto-config-icon">🔒</span>
+              <span data-i18n="auto.info">点击下方按钮即可调用大模型进行深度分析 · API 已内置于服务器端，无需额外配置</span>
+            </div>
+          </div>
+
+          <!-- 操作按钮区 -->
+          <div class="ds-action-buttons">
+            <button class="ds-analyze-btn" id="dsAnalyzeBtn">
+              <span id="dsAnalyzeBtnContent" data-i18n="dual.btn">✨ 生成AI分析提示词</span>
+            </button>
+            <button class="ds-auto-analyze-btn" id="dsAutoAnalyzeBtn" style="display:none;" onclick="App._runAutoAnalysis()">
+              <span id="dsAutoAnalyzeBtnContent">🤖 开始大模型分析</span>
+            </button>
+          </div>
 
           <!-- Prompt 展示区 -->
           <div class="prompt-result-area" id="promptResultArea" style="display:none;">
@@ -198,6 +218,16 @@
               <span class="local-analysis-title" data-i18n="dual.local.title">本地统计分析参考</span>
             </div>
             <div class="ds-content" id="localAnalysisContent"></div>
+          </div>
+
+          <!-- 大模型自动分析结果 -->
+          <div class="auto-analysis-result" id="autoAnalysisResult" style="display:none;">
+            <div class="auto-result-header">
+              <span class="auto-result-icon">🤖</span>
+              <span class="auto-result-title" data-i18n="dual.auto.result">大模型分析结果</span>
+              <span class="auto-result-model" id="autoResultModel"></span>
+            </div>
+            <div class="ds-content" id="autoAnalysisContent"></div>
           </div>
 
           <div class="ds-tips" id="dsTips" data-i18n="dual.tips">

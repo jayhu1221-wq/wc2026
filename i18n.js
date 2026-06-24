@@ -98,6 +98,10 @@ const I18n = {
       'dual.localEngine': '本地引擎',
       'dual.localAnalysis': '本地统计分析',
       'dual.tokens': '消耗',
+      'dual.mode.prompt': '📋 复制提示词模式',
+      'dual.mode.auto': '🤖 大模型自动分析',
+      'auto.info': '点击下方按钮即可调用大模型进行深度分析 · API 已内置于服务器端，无需额外配置',
+      'dual.auto.result': '大模型分析结果',
 
       // Score distribution
       'scoredist.title': '🎲 比分概率分布（Top 8）',
@@ -441,8 +445,10 @@ const I18n = {
       'dual.localEngine': 'Local Engine',
       'dual.localAnalysis': 'Local Statistical Analysis',
       'dual.tokens': 'tokens',
-
-      'scoredist.title': '🎲 Score Probability Distribution (Top 8)',
+      'dual.mode.prompt': '📋 Copy Prompt Mode',
+      'dual.mode.auto': '🤖 Auto AI Analysis',
+      'auto.info': 'Click the button below to start AI deep analysis · API is built into the server, no configuration needed',
+      'dual.auto.result': 'AI Analysis Result',
 
       'schedule.header': '📅 Full Schedule',
       'schedule.desc': 'All 104 matches · 🟢Green=Final · 🔴Red=AI Prediction · 🥇1st🥈2nd🎯Upset',
@@ -768,8 +774,10 @@ const I18n = {
       'dual.localEngine': 'Motor Local',
       'dual.localAnalysis': 'Análisis Estadístico Local',
       'dual.tokens': 'tokens',
-
-      'scoredist.title': '🎲 Distribución de Probabilidad de Marcadores (Top 8)',
+      'dual.mode.prompt': '📋 Modo Copiar Prompt',
+      'dual.mode.auto': '🤖 Análisis IA Automático',
+      'auto.info': 'Haz clic en el botón para iniciar el análisis profundo de IA · La API está integrada en el servidor, sin configuración',
+      'dual.auto.result': 'Resultado del Análisis IA',
 
       'schedule.header': '📅 Calendario Completo',
       'schedule.desc': 'Los 104 partidos · 🟢Verde=Final · 🔴Rojo=Predicción IA · 🥇1ª🥈2ª🎯Sorpresa',
@@ -1095,8 +1103,10 @@ const I18n = {
       'dual.localEngine': 'Moteur Local',
       'dual.localAnalysis': 'Analyse Statistique Locale',
       'dual.tokens': 'jetons',
-
-      'scoredist.title': '🎲 Distribution de Probabilité des Scores (Top 8)',
+      'dual.mode.prompt': '📋 Mode Copier Prompt',
+      'dual.mode.auto': '🤖 Analyse IA Automatique',
+      'auto.info': 'Cliquez sur le bouton ci-dessous pour démarrer l\'analyse IA approfondie · L\'API est intégrée au serveur, aucune configuration requise',
+      'dual.auto.result': 'Résultat de l\'Analyse IA',
 
       'schedule.header': '📅 Calendrier Complet',
       'schedule.desc': 'Les 104 matchs · 🟢Vert=Terminé · 🔴Rouge=Prédiction IA · 🥇1er🥈2e🎯Surprise',

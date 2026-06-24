@@ -715,9 +715,11 @@ const LiveData = {
 
     let attackAdj = 0, defenseAdj = 0, formAdj = 0;
 
-    if (avail < 0.5) { attackAdj -= 1.5; defenseAdj -= 1.2; formAdj -= 1.0; }
-    else if (avail < 0.7) { attackAdj -= 0.8; defenseAdj -= 0.6; formAdj -= 0.5; }
-    else if (avail < 0.85) { attackAdj -= 0.3; defenseAdj -= 0.2; formAdj -= 0.2; }
+    if (avail < 0.35) { attackAdj -= 2.5; defenseAdj -= 2.0; formAdj -= 1.5; }
+    else if (avail < 0.5) { attackAdj -= 1.8; defenseAdj -= 1.4; formAdj -= 1.0; }
+    else if (avail < 0.65) { attackAdj -= 1.2; defenseAdj -= 0.9; formAdj -= 0.7; }
+    else if (avail < 0.8) { attackAdj -= 0.6; defenseAdj -= 0.4; formAdj -= 0.3; }
+    else if (avail < 0.9) { attackAdj -= 0.2; defenseAdj -= 0.1; formAdj -= 0.1; }
 
     const news = (teamIntel.news || []).join(' ');
     const injuries = (teamIntel.injuries || []).map(i => i.name || '').join(' ');

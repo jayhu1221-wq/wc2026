@@ -492,8 +492,10 @@ const Predictor = {
         const names = awayInjuries.map(i => i.name || i).join('、');
         parts.push(`客队伤停：${names}`);
       }
-      if (homeAvail < 0.85) parts.push(`主队阵容完整度${(homeAvail * 100).toFixed(0)}%`);
-      if (awayAvail < 0.85) parts.push(`客队阵容完整度${(awayAvail * 100).toFixed(0)}%`);
+      const availPctH = Math.round(homeAvail * 100);
+      const availPctA = Math.round(awayAvail * 100);
+      if (homeAvail < 0.9) parts.push(`主队阵容完整度${availPctH}%（${this._availDesc(availPctH)}）`);
+      if (awayAvail < 0.9) parts.push(`客队阵容完整度${availPctA}%（${this._availDesc(availPctA)}）`);
 
       const hka = intelligence.home?.keyAbsent || '';
       const aka = intelligence.away?.keyAbsent || '';
@@ -516,6 +518,16 @@ const Predictor = {
       keyFactors,
       detail
     };
+  },
+
+  // ── 阵容完整度文字描述 ──
+  _availDesc(pct) {
+    if (pct >= 90) return '阵容齐整，全员可用';
+    if (pct >= 80) return '轻微伤停，个别替补缺阵，影响极小';
+    if (pct >= 65) return '部分主力伤停，对实力有一定影响';
+    if (pct >= 50) return '多名主力缺阵，战力明显下降';
+    if (pct >= 35) return '阵容严重不整，大部分主力无法出场，战力大幅下降';
+    return '阵容极度残缺，核心球员几乎全部缺阵，战力断崖式下降';
   },
 
   // ── Monte Carlo Simulation — 返回三重比分 ──
@@ -715,16 +727,31 @@ const Predictor = {
     if (injury && injury.homeAvail !== undefined) {
       const hAvail = injury.homeAvail;
       const aAvail = injury.awayAvail;
+      const hPct = Math.round(hAvail * 100);
+      const aPct = Math.round(aAvail * 100);
+      const hDesc = this._availDesc(hPct);
+      const aDesc = this._availDesc(aPct);
+      const hInjNames = injury.homeInjuries.length > 0 ? '主力' + injury.homeInjuries.map(i=>i.name||i).join('、') + '缺阵' : '';
+      const aInjNames = injury.awayInjuries.length > 0 ? '主力' + injury.awayInjuries.map(i=>i.name||i).join('、') + '缺阵' : '';
 
-      if (hAvail < 0.7) {
-        reasons.push(`🚨 ${homeTeam}阵容严重不整（完整度${(hAvail*100).toFixed(0)}%），${injury.homeInjuries.length > 0 ? '主力' + injury.homeInjuries.map(i=>i.name||i).join('、') + '缺阵' : '多名主力缺阵'}，战力大幅下降！`);
-      } else if (hAvail < 0.85) {
-        reasons.push(`⚠️ ${homeTeam}有少量伤停（完整度${(hAvail*100).toFixed(0)}%），对整体实力有轻微影响。`);
+      if (hAvail < 0.5) {
+        reasons.push(`🚨 ${homeTeam}阵容极度不整（完整度${hPct}%），${hInjNames || '大部分主力无法出场'}，${hDesc}，战力断崖式下降！`);
+      } else if (hAvail < 0.65) {
+        reasons.push(`🚨 ${homeTeam}阵容严重不整（完整度${hPct}%），${hInjNames || '多名主力缺阵'}，${hDesc}！`);
+      } else if (hAvail < 0.8) {
+        reasons.push(`⚠️ ${homeTeam}有部分伤停（完整度${hPct}%），${hInjNames || '个别主力可能缺阵'}，${hDesc}。`);
+      } else if (hAvail < 0.9) {
+        reasons.push(`📋 ${homeTeam}轻微伤停（完整度${hPct}%），${hDesc}。`);
       }
-      if (aAvail < 0.7) {
-        reasons.push(`🚨 ${awayTeam}阵容严重不整（完整度${(aAvail*100).toFixed(0)}%），${injury.awayInjuries.length > 0 ? '主力' + injury.awayInjuries.map(i=>i.name||i).join('、') + '缺阵' : '多名主力缺阵'}，战力大幅下降！`);
-      } else if (aAvail < 0.85) {
-        reasons.push(`⚠️ ${awayTeam}有少量伤停（完整度${(aAvail*100).toFixed(0)}%），对整体实力有轻微影响。`);
+
+      if (aAvail < 0.5) {
+        reasons.push(`🚨 ${awayTeam}阵容极度不整（完整度${aPct}%），${aInjNames || '大部分主力无法出场'}，${aDesc}，战力断崖式下降！`);
+      } else if (aAvail < 0.65) {
+        reasons.push(`🚨 ${awayTeam}阵容严重不整（完整度${aPct}%），${aInjNames || '多名主力缺阵'}，${aDesc}！`);
+      } else if (aAvail < 0.8) {
+        reasons.push(`⚠️ ${awayTeam}有部分伤停（完整度${aPct}%），${aInjNames || '个别主力可能缺阵'}，${aDesc}。`);
+      } else if (aAvail < 0.9) {
+        reasons.push(`📋 ${awayTeam}轻微伤停（完整度${aPct}%），${aDesc}。`);
       }
 
       if (injury.keyFactors && injury.keyFactors.length > 0) {

@@ -2542,6 +2542,81 @@ body {
 .ds-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(124,58,237,0.6); background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 .ds-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
+/* ── 大模型自动分析按钮 ── */
+.ds-auto-analyze-btn {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, #059669, #047857);
+  border: none; border-radius: 10px; color: white;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.3s; box-shadow: 0 4px 15px rgba(5,150,105,0.4);
+}
+.ds-auto-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(5,150,105,0.6); background: linear-gradient(135deg, #10b981, #059669); }
+.ds-auto-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── 分析模式切换 ── */
+.ds-mode-switcher {
+  display: flex; gap: 8px; margin: 12px 0 8px;
+}
+.ds-mode-btn {
+  flex: 1; padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; color: #94a3b8;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all 0.25s;
+}
+.ds-mode-btn:hover { background: rgba(255,255,255,0.1); color: #e2e8f0; }
+.ds-mode-btn.active {
+  background: rgba(124,58,237,0.25);
+  border-color: rgba(124,58,237,0.6);
+  color: #c4b5fd;
+}
+
+/* ── 操作按钮区 ── */
+.ds-action-buttons {
+  display: flex; gap: 8px; margin: 8px 0 12px;
+}
+
+/* ── 自动分析信息区（服务端代理模式）── */
+.auto-analysis-config {
+  background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(5,150,105,0.06));
+  border: 1px solid rgba(124,58,237,0.25);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 8px 0 12px;
+}
+.auto-config-info {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text-muted);
+  line-height: 1.5;
+}
+.auto-config-icon { font-size: 20px; flex-shrink: 0; }
+
+/* ── 自动分析结果区 ── */
+.auto-analysis-result {
+  margin-top: 12px;
+  background: linear-gradient(135deg, rgba(5,150,105,0.08), rgba(124,58,237,0.05));
+  border: 1px solid rgba(5,150,105,0.3);
+  border-radius: 10px;
+  padding: 16px;
+}
+.auto-result-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.auto-result-icon { font-size: 20px; }
+.auto-result-title {
+  font-size: 14px; font-weight: 800; color: #4ade80;
+  flex: 1;
+}
+.auto-result-model {
+  font-size: 11px; color: var(--text-dim);
+  background: rgba(0,0,0,0.3);
+  padding: 3px 8px; border-radius: 4px;
+}
+
 /* ── Prompt 类型切换 ── */
 .prompt-type-switcher {
   display: flex; gap: 8px; margin: 12px 0;

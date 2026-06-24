@@ -2183,11 +2183,121 @@ const App = {
     const analyzeBtn = document.getElementById('dsAnalyzeBtn');
     if (analyzeBtn) analyzeBtn.disabled = false;
 
-    // 自动生成 Prompt
-    setTimeout(() => {
-      const btn = document.getElementById('dsAnalyzeBtn');
-      if (btn && !btn.disabled) this._runDeepSeekAnalysis();
-    }, 600);
+    // 自动生成 Prompt（仅提示词模式下）
+    if (this._analysisMode !== 'auto') {
+      setTimeout(() => {
+        const btn = document.getElementById('dsAnalyzeBtn');
+        if (btn && !btn.disabled) this._runDeepSeekAnalysis();
+      }, 600);
+    }
+  },
+
+  // =============================================
+  //  大模型自动分析模块（服务端代理模式）
+  //  API Key 内嵌于 Railway 后端，前端无需输入
+  // =============================================
+
+  _analysisMode: 'prompt',   // 'prompt' | 'auto'
+
+  // ── 切换分析模式 ──
+  _switchAnalysisMode(mode) {
+    this._analysisMode = mode;
+    document.querySelectorAll('.ds-mode-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(mode === 'auto' ? 'dsModeAuto' : 'dsModePrompt')?.classList.add('active');
+
+    const promptSwitcher = document.getElementById('promptTypeSwitcher');
+    const autoConfig = document.getElementById('autoAnalysisConfig');
+    const promptBtn = document.getElementById('dsAnalyzeBtn');
+    const autoBtn = document.getElementById('dsAutoAnalyzeBtn');
+    const promptArea = document.getElementById('promptResultArea');
+    const autoResult = document.getElementById('autoAnalysisResult');
+
+    if (mode === 'auto') {
+      if (promptSwitcher) promptSwitcher.style.display = 'none';
+      if (autoConfig) autoConfig.style.display = 'block';
+      if (promptBtn) promptBtn.style.display = 'none';
+      if (autoBtn) autoBtn.style.display = 'flex';
+      if (promptArea) promptArea.style.display = 'none';
+    } else {
+      if (promptSwitcher) promptSwitcher.style.display = 'flex';
+      if (autoConfig) autoConfig.style.display = 'none';
+      if (promptBtn) promptBtn.style.display = 'flex';
+      if (autoBtn) autoBtn.style.display = 'none';
+      if (autoResult) autoResult.style.display = 'none';
+    }
+  },
+
+  // ── 执行大模型自动分析（调用后端 /api/analyze）──
+  async _runAutoAnalysis() {
+    if (!this._currentPredResult) return;
+
+    const pred = this._currentPredResult;
+    const homeZh = this.zhName(pred.homeTeam);
+    const awayZh = this.zhName(pred.awayTeam);
+
+    const btn = document.getElementById('dsAutoAnalyzeBtn');
+    const btnContent = document.getElementById('dsAutoAnalyzeBtnContent');
+    const resultDiv = document.getElementById('autoAnalysisResult');
+    const contentDiv = document.getElementById('autoAnalysisContent');
+    const modelBadge = document.getElementById('autoResultModel');
+
+    if (btn) btn.disabled = true;
+    if (btnContent) btnContent.innerHTML = `<div class="ds-loading-dots"><span></span><span></span><span></span></div> 分析中...`;
+    if (resultDiv) resultDiv.style.display = 'block';
+    if (contentDiv) contentDiv.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);"><div class="ds-loading-dots" style="display:inline-block;"><span></span><span></span><span></span></div><p style="margin-top:12px;">正在调用大模型进行深度分析，请稍候...</p></div>`;
+
+    try {
+      // 获取赛前情报
+      let intelligence = null;
+      if (typeof LiveData !== 'undefined') {
+        try {
+          intelligence = await LiveData.fetchMatchIntelligence(pred.homeTeam, pred.awayTeam, '');
+        } catch(e) { console.warn('[AutoAnalysis] 情报获取失败:', e.message); }
+      }
+
+      // 生成 Prompt（与复制提示词模式相同逻辑）
+      const promptText = (this._promptType === 'lite' && typeof MimoEngine !== 'undefined')
+        ? MimoEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence)
+        : DeepSeekEngine.buildPrompt(pred.homeTeam, pred.awayTeam, pred, homeZh, awayZh, intelligence);
+
+      // 调用后端 /api/analyze 端点（服务端已内嵌 API Key）
+      console.log('[AutoAnalysis] 调用 /api/analyze, prompt length:', promptText.length);
+      
+      const apiRes = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText })
+      });
+
+      const result = await apiRes.json();
+
+      if (!result.ok) {
+        // 服务端返回错误 — 直接展示错误信息，不做降级
+        throw new Error(result.message || '分析请求失败');
+      }
+
+      const aiContent = result.content || '';
+      if (!aiContent) throw new Error('大模型返回空结果');
+
+      // 显示成功结果
+      if (contentDiv) contentDiv.innerHTML = DeepSeekEngine.formatResponse(aiContent);
+      if (modelBadge) modelBadge.textContent = `Server · ${result.model || 'AI'}`;
+      if (btnContent) btnContent.innerHTML = '🔄 重新分析';
+
+    } catch(e) {
+      console.error('[AutoAnalysis] 分析失败:', e.message);
+
+      // 失败时显示错误提示，绝不降级到本地分析
+      if (contentDiv) contentDiv.innerHTML = `
+        <div style="padding:24px;text-align:center;color:#f87171;">
+          <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+          <p style="font-weight:700;font-size:16px;margin-bottom:8px;">${e.message.includes('暂未上线') || e.message.includes('不可用') || e.message.includes('离线') || e.message.includes('超时') || e.message.includes('负载') || e.message.includes('失败') ? e.message : '⚠️ 无法完成分析'}</p>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:12px;">大模型服务暂时不可用，请稍后再试，或切换到「📋 复制提示词模式」手动在其他 AI 平台进行分析</p>
+        </div>`;
+      if (btnContent) btnContent.innerHTML = '🤖 开始大模型分析';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 };
 
