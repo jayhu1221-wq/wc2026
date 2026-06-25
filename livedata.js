@@ -396,6 +396,10 @@ const LiveData = {
       ag: finalAg,
       venue: match.venue
     };
+    // 携带之前保存的预测数据（如果有）
+    if (match.pred) {
+      completedMatch.pred = match.pred;
+    }
     WC2026_DATA.completedResults.push(completedMatch);
 
     // 更新球队战绩

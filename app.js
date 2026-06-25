@@ -142,6 +142,9 @@ const App = {
       console.warn('[App.init] LiveData.init failed:', e.message);
     }
 
+    // 2.5 恢复 localStorage 中保存的预测数据（在渲染前执行）
+    this._restoreSavedPredictions();
+
     // 3. 渲染所有模块（每个独立 try/catch，互不阻塞）
     const renderFns = [
       ['renderTodayMatches', () => this.renderTodayMatches()],
@@ -747,6 +750,58 @@ const App = {
     } else {
       const lotSec = document.getElementById('lotterySection');
       if (lotSec) lotSec.style.display = 'none';
+    }
+
+    // ─ 保存预测结果到 upcomingMatches + localStorage ──
+    this._saveMatchPrediction(homeTeam, awayTeam, primaryScore);
+  },
+
+  // 将预测比分保存到 upcomingMatches 对应记录 & 持久化
+  _saveMatchPrediction(homeTeam, awayTeam, primaryScore) {
+    if (!homeTeam || !awayTeam || !primaryScore) return;
+    const predData = { hg: primaryScore.home, ag: primaryScore.away };
+
+    // 1. 写入内存中 upcomingMatches 对应记录
+    const match = WC2026_DATA.upcomingMatches.find(
+      m => (m.home === homeTeam && m.away === awayTeam) ||
+           (m.home === awayTeam && m.away === homeTeam)
+    );
+    if (match) {
+      match.pred = predData;
+      console.log(`[PredSave] ✓ 已保存 ${homeTeam} vs ${awayTeam} → ${predData.hg}-${predData.ag}`);
+    }
+
+    // 2. 持久化到 localStorage（跨刷新保留）
+    try {
+      const saved = JSON.parse(localStorage.getItem('wc2026_predictions') || '{}');
+      const key = [homeTeam, awayTeam].sort().join('_vs_');
+      saved[key] = { home: homeTeam, away: awayTeam, pred: predData, savedAt: new Date().toISOString() };
+      localStorage.setItem('wc2026_predictions', JSON.stringify(saved));
+    } catch(e) {
+      console.warn('[PredSave] localStorage 写入失败:', e.message);
+    }
+  },
+
+  // 页面加载时从 localStorage 恢复预测数据到 upcomingMatches
+  _restoreSavedPredictions() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('wc2026_predictions') || '{}');
+      let restored = 0;
+      for (const key of Object.keys(saved)) {
+        const item = saved[key];
+        if (!item || !item.pred) continue;
+        const match = WC2026_DATA.upcomingMatches.find(
+          m => (m.home === item.home && m.away === item.away) ||
+               (m.home === item.away && m.away === item.home)
+        );
+        if (match && !match.pred) {
+          match.pred = item.pred;
+          restored++;
+        }
+      }
+      if (restored > 0) console.log(`[PredRestore] 从 localStorage 恢复了 ${restored} 条预测`);
+    } catch(e) {
+      // localStorage 不可用时静默失败
     }
   },
 
